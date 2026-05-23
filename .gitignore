@@ -5,6 +5,9 @@
 /captures/
 local.properties
 
+# ── opencode ──
+.omo
+
 # ── IDE - IntelliJ IDEA ──
 *.iml
 .idea/*.iml

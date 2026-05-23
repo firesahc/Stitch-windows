@@ -5,6 +5,8 @@ import soko.ekibun.stitch.Stitch
 import java.awt.*
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
 import java.io.File
 import javax.imageio.ImageIO
 import javax.swing.*
@@ -85,6 +87,13 @@ class MainView : JFrame() {
         aboutBtn.addActionListener { AboutDialog.show(this) }
         bottomBar.add(aboutBtn)
         add(bottomBar, BorderLayout.SOUTH)
+
+        // 窗口激活时刷新项目列表（关闭编辑器后自动更新）
+        addWindowListener(object : WindowAdapter() {
+            override fun windowActivated(e: WindowEvent) {
+                loadProjects()
+            }
+        })
 
         loadProjects()
     }

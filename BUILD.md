@@ -16,6 +16,9 @@
 
 ## 构建命令
 
+> **注意**: `build.gradle.kts` 中包含一个 `stripOpenCvJar` 任务，会在 `installDist` 时自动剥离
+> OpenCV jar 中非 Windows 的原生库（Linux、macOS、x86_32），大幅减小发行包体积。
+
 ### 1. 完整构建（Gradle 编译 + installDist）
 
 ```bash
@@ -32,8 +35,7 @@
     --input "build\install\Stitch\lib" `
     --main-jar Stitch-1.0.0.jar `
     --main-class soko.ekibun.stitch.AppKt `
-    --dest "build\jpackage" `
-    --win-console
+    --dest "build\jpackage"
 
 # 打包 ZIP
 Compress-Archive -Path "build\jpackage\Stitch\*" `
@@ -54,8 +56,7 @@ Compress-Archive -Path "build\jpackage\Stitch\*" `
     --input "build\install\Stitch\lib" `
     --main-jar Stitch-1.0.0.jar `
     --main-class soko.ekibun.stitch.AppKt `
-    --dest "build\jpackage" `
-    --win-console
+    --dest "build\jpackage"
 
 # 3. 打包 ZIP
 New-Item -ItemType Directory -Path "build\distributions" -Force | Out-Null
@@ -83,4 +84,5 @@ Get-ChildItem "build\distributions" | Select-Object Name, @{N='SizeMB';E={[math]
 - `jpackage` 路径请根据实际 JDK 安装位置调整
 - 如需生成 `--type exe` 安装包（真正的单个安装程序），需安装 [WiX Toolset](https://wixtoolset.org/) 或 [Inno Setup](https://jrsoftware.org/isinfo.php)
 - 应用使用了 OpenCV 原生库（通过 OpenPnp），已包含在 jar 中
-- 构建产物约 155MB（压缩后），解压后约 236MB
+- 构建产物约 80MB（压缩后），解压后约 130MB（得益于自动剥离 OpenCV 非 Windows 原生库）
+- **无控制台窗口**: EXE 启动时不会弹出命令行窗口（已移除 `--win-console`）

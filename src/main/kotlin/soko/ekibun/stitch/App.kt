@@ -9,10 +9,7 @@ import nu.pattern.OpenCV
 
 object App {
     val dataDirPath: String by lazy {
-        val appData = System.getenv("APPDATA") ?: (
-            System.getProperty("user.home") + File.separator + "AppData" + File.separator + "Local"
-        )
-        appData + File.separator + "Stitch" + File.separator + "Project"
+        System.getProperty("user.dir") + File.separator + "data"
     }
 
     val bitmapCache by lazy { BitmapCache }
