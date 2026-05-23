@@ -1,0 +1,77 @@
+# ── Gradle ──
+.gradle/
+/build/
+/out/
+/captures/
+local.properties
+
+# ── IDE - IntelliJ IDEA ──
+*.iml
+.idea/*.iml
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+.idea/caches/
+.idea/libraries/
+.idea/shelf/
+.idea/tasks/
+.idea/httpRequests/
+.idea/dataSources/
+.idea/dataSources.local.xml
+.idea/sqlDataSources.xml
+.idea/dynamic.xml
+.idea/uiDesigner.xml
+
+# ── IDE - VS Code ──
+.vscode/
+*.code-workspace
+
+# ── IDE - Eclipse ──
+.classpath
+.project
+.settings/
+*.prefs
+
+# ── Native / NDK / JNI ──
+.externalNativeBuild/
+.cxx/
+*.so
+*.dll
+*.dylib
+*.jnilib
+/opencv.bak/
+
+# ── OS files ──
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+*.lnk
+$RECYCLE.BIN/
+
+# ── Editor backup / temp ──
+*~
+*.swp
+*.swo
+*.swn
+*.bak
+*.orig
+*.tmp
+*.log
+*.class
+
+# ── Runtime / output ──
+*.apk
+*.aab
+*.ap_
+output-metadata.json
+/release/
+
+# ── Project excludes ──
+/policy/
+/secret/
+/secrets/
+*.key
+*.p12
+*.jks
