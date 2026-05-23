@@ -26,3 +26,34 @@ application {
 kotlin {
     jvmToolchain(17)
 }
+
+// ──────────────────────────────────────────────
+// 剥离 OpenCV 非 Windows 平台原生库，减小发行包体积
+// ──────────────────────────────────────────────
+val stripOpenCvJar by tasks.registering(Jar::class) {
+    val opencvFile = configurations.runtimeClasspath.get().files.single {
+        it.name.startsWith("opencv-") && it.name.endsWith(".jar") && !it.name.contains("sources")
+    }
+    from(zipTree(opencvFile)) {
+        exclude("nu/pattern/opencv/linux/**")
+        exclude("nu/pattern/opencv/osx/**")
+        exclude("nu/pattern/opencv/windows/x86_32/**")
+    }
+    archiveFileName.set("opencv-4.9.0-0-windows-only.jar")
+    destinationDirectory.set(layout.buildDirectory.dir("stripped-libs"))
+}
+
+// 在 installDist 完成后替换为剥离后的 opencv jar
+tasks.named("installDist") {
+    dependsOn(stripOpenCvJar)
+    doLast {
+        val libDir = file("${layout.buildDirectory.get()}/install/${rootProject.name}/lib")
+        libDir.listFiles()?.filter {
+            it.name.startsWith("opencv-") && !it.name.contains("windows-only") && !it.name.contains("sources")
+        }?.forEach { it.delete() }
+        copy {
+            from(layout.buildDirectory.dir("stripped-libs"))
+            into(libDir)
+        }
+    }
+}
