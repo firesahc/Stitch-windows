@@ -189,9 +189,10 @@ class EditActivity {
     }
 
     private fun createTabBar(): JPanel {
-        tabPane = JPanel(FlowLayout(FlowLayout.LEFT, 0, 0))
+        tabPane = JPanel(FlowLayout(FlowLayout.LEFT, 15, 4))
         tabviews = StitchType.values().map { type ->
             JLabel(type.label).apply {
+                border = javax.swing.border.EmptyBorder(4, 12, 4, 12)
                 toolTipText = type.label
                 addMouseListener(object : MouseAdapter() {
                     override fun mouseClicked(e: MouseEvent) {
@@ -306,9 +307,13 @@ class EditActivity {
             background = PRIMARY_COLOR
             addActionListener { saveImage() }
         }
+        val rightPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
+            add(saveBtn)
+            border = javax.swing.border.EmptyBorder(0, 0, 0, 20)
+        }
         return JPanel(BorderLayout()).apply {
             add(JLabel(""), BorderLayout.CENTER)
-            add(saveBtn, BorderLayout.EAST)
+            add(rightPanel, BorderLayout.EAST)
         }
     }
 
