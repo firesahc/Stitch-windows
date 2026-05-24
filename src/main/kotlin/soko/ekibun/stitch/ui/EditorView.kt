@@ -77,8 +77,6 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
         scrollY = max(minScrollY, min(maxScrollY, scrollY))
     }
 
-    fun redraw() { repaint() }
-
     override fun paintComponent(g: Graphics) {
         super.paintComponent(g)
         val g2d = g as Graphics2D

@@ -151,7 +151,7 @@ class MainView : JFrame() {
                             }
                         }
                     } catch (ex: Exception) {
-                        ex.printStackTrace()
+                        JOptionPane.showMessageDialog(null, "操作失败：${ex.message}", "错误", JOptionPane.ERROR_MESSAGE)
                     }
                 }
                 EditActivity.open(this, key)
