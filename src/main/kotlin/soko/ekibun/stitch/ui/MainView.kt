@@ -98,6 +98,7 @@ class MainView : JFrame() {
         val bottomBar = JPanel(FlowLayout(FlowLayout.RIGHT, 10, 10))
         val aboutBtn = JButton("关于")
         aboutBtn.addActionListener { AboutDialog.show(this) }
+        aboutBtn.border = EmptyBorder(5, 10, 5, 10)
         bottomBar.add(aboutBtn)
         add(bottomBar, BorderLayout.SOUTH)
 
@@ -122,13 +123,13 @@ class MainView : JFrame() {
         label.alignmentX = Component.CENTER_ALIGNMENT
 
         val subLabel = JLabel("截图拼接助手")
-        subLabel.font = Font(Font.SANS_SERIF, Font.PLAIN, 12)
+        subLabel.font = Font(Font.SANS_SERIF, Font.PLAIN, 13)
         subLabel.foreground = Color.GRAY
         subLabel.alignmentX = Component.CENTER_ALIGNMENT
 
         val fromGalleryBtn = JButton("从文件夹导入")
         fromGalleryBtn.alignmentX = Component.CENTER_ALIGNMENT
-        fromGalleryBtn.maximumSize = Dimension(Integer.MAX_VALUE, fromGalleryBtn.preferredSize.height)
+        fromGalleryBtn.maximumSize = Dimension(300, fromGalleryBtn.preferredSize.height)
         fromGalleryBtn.addActionListener {
             val chooser = JFileChooser()
             chooser.dialogTitle = "选择图片"
@@ -160,7 +161,7 @@ class MainView : JFrame() {
 
         val openBtn = JButton("新建项目")
         openBtn.alignmentX = Component.CENTER_ALIGNMENT
-        openBtn.maximumSize = Dimension(Integer.MAX_VALUE, openBtn.preferredSize.height)
+        openBtn.maximumSize = Dimension(300, openBtn.preferredSize.height)
         openBtn.addActionListener {
             val key = App.newProject()
             EditActivity.open(this, key)
@@ -169,7 +170,7 @@ class MainView : JFrame() {
 
         val clearBtn = JButton("清除历史")
         clearBtn.alignmentX = Component.CENTER_ALIGNMENT
-        clearBtn.maximumSize = Dimension(Integer.MAX_VALUE, clearBtn.preferredSize.height)
+        clearBtn.maximumSize = Dimension(300, clearBtn.preferredSize.height)
         clearBtn.addActionListener {
             App.clearProjects()
             loadProjects()

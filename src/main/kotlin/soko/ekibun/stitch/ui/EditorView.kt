@@ -108,7 +108,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
 
             // Draw UI overlay (circles, numbers, connection lines)
             val radius = 20.0 / scale
-            val textSize = 15.0 / scale
+            val textSize = (15.0 / scale).coerceIn(8.0, 48.0)
             val baseline = textSize / 2
 
             bg.font = Font(Font.SANS_SERIF, Font.PLAIN, textSize.toInt())
