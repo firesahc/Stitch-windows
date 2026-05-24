@@ -2,6 +2,7 @@ package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.App
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.util.PRIMARY_COLOR
 import java.awt.*
 import java.awt.event.*
 import java.io.File
@@ -156,7 +157,7 @@ class EditActivity {
 
         return JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
             add(undoBtn); add(importBtn)
-            background = Color.LIGHT_GRAY
+            background = Color(220, 220, 220)
         }
     }
 
@@ -172,7 +173,7 @@ class EditActivity {
             gbc.gridy = 3; add(createSeekbarPanel(), gbc)
             gbc.gridy = 4; add(createProgressRow(), gbc)
             gbc.gridy = 5; add(createActionRow(), gbc)
-            background = Color(240, 240, 240)
+            background = Color(235, 235, 235)
         }
     }
 
@@ -209,7 +210,7 @@ class EditActivity {
         val homoCb = JCheckBox("特征匹配")
         val stitchBtn = JButton("自动拼接").apply {
             foreground = Color.WHITE
-            background = Color(66, 132, 243)
+            background = PRIMARY_COLOR
             addActionListener { stitch(homoCb.isSelected, diffCb.isSelected) }
         }
         panelAuto = JPanel(FlowLayout(FlowLayout.LEFT, 10, 5)).apply {
@@ -302,7 +303,7 @@ class EditActivity {
     private fun createActionRow(): JPanel {
         val saveBtn = JButton("保存").apply {
             foreground = Color.WHITE
-            background = Color(66, 132, 243)
+            background = PRIMARY_COLOR
             addActionListener { saveImage() }
         }
         return JPanel(BorderLayout()).apply {
@@ -333,7 +334,7 @@ class EditActivity {
         tabviews.forEach { label ->
             val idx = tabviews.indexOf(label)
             val type = StitchType.values()[idx]
-            label.foreground = if (type == stitchType) Color(66, 132, 243) else Color.BLACK
+            label.foreground = if (type == stitchType) PRIMARY_COLOR else Color.BLACK
             label.font = if (type == stitchType) label.font.deriveFont(Font.BOLD) else label.font.deriveFont(Font.PLAIN)
         }
 
