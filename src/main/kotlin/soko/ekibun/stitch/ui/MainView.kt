@@ -3,6 +3,7 @@ package soko.ekibun.stitch.ui
 import soko.ekibun.stitch.App
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.Strings
 import java.awt.*
 import java.awt.event.MouseAdapter
@@ -26,18 +27,7 @@ class MainView : JFrame() {
         setSize(600, 500)
         setLocationRelativeTo(null)
 
-        val icon = java.awt.image.BufferedImage(32, 32, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-        val g = icon.createGraphics()
-        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
-        g.color = soko.ekibun.stitch.util.PRIMARY_COLOR
-        g.fillRoundRect(2, 2, 28, 28, 8, 8)
-        g.color = java.awt.Color.WHITE
-        g.font = java.awt.Font("Microsoft YaHei", java.awt.Font.BOLD, 20)
-        val fm = g.fontMetrics
-        val sw = fm.stringWidth("S")
-        g.drawString("S", (32 - sw) / 2, 24)
-        g.dispose()
-        setIconImage(icon)
+        setIconImage(GraphicsHelper.createAppIcon())
 
         layout = BorderLayout()
 

@@ -2,6 +2,7 @@ package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.PRIMARY_COLOR
 import soko.ekibun.stitch.util.Strings
 import java.awt.*
@@ -77,21 +78,6 @@ class EditActivity {
         this.editorService = EditorService(projectKey, this)
     }
 
-    private fun createAppIcon(): java.awt.image.BufferedImage {
-        val icon = java.awt.image.BufferedImage(32, 32, java.awt.image.BufferedImage.TYPE_INT_ARGB)
-        val g = icon.createGraphics()
-        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
-        g.color = soko.ekibun.stitch.util.PRIMARY_COLOR
-        g.fillRoundRect(2, 2, 28, 28, 8, 8)
-        g.color = java.awt.Color.WHITE
-        g.font = java.awt.Font("Microsoft YaHei", java.awt.Font.BOLD, 20)
-        val fm = g.fontMetrics
-        val sw = fm.stringWidth("S")
-        g.drawString("S", (32 - sw) / 2, 24)
-        g.dispose()
-        return icon
-    }
-
     fun show() {
         val frame = JFrame(Strings.get("edit.title"))
         frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
@@ -99,7 +85,7 @@ class EditActivity {
         frame.setSize(1000, 700)
         frame.setLocationRelativeTo(null)
 
-        frame.setIconImage(createAppIcon())
+        frame.setIconImage(GraphicsHelper.createAppIcon())
 
         editView = EditorView(this)
         frame.add(editView, BorderLayout.CENTER)
