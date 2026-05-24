@@ -27,22 +27,24 @@ class EditorService(
         activity.progressRow.isVisible = true
 
         Thread {
-            var done = 0
-            project.updateUndo {
-                project.stitchInfo.reduceOrNull { acc, it ->
-                    if (project.selected.contains(it.imageKey)) {
-                        Stitch.combine(homo, diff, acc, it)?.let { data ->
-                            it.dx = data.dx; it.dy = data.dy
-                            it.drot = data.drot; it.dscale = data.dscale
+            synchronized(project) {
+                var done = 0
+                project.updateUndo {
+                    project.stitchInfo.reduceOrNull { acc, it ->
+                        if (project.selected.contains(it.imageKey)) {
+                            Stitch.combine(homo, diff, acc, it)?.let { data ->
+                                it.dx = data.dx; it.dy = data.dy
+                                it.drot = data.drot; it.dscale = data.dscale
+                            }
+                            done++
+                            val finalDone = done
+                            SwingUtilities.invokeLater {
+                                activity.progressLabel.text = Strings.get("editor.progress", finalDone, total)
+                                activity.progressBar.value = finalDone
+                            }
                         }
-                        done++
-                        val finalDone = done
-                        SwingUtilities.invokeLater {
-                            activity.progressLabel.text = Strings.get("editor.progress", finalDone, total)
-                            activity.progressBar.value = finalDone
-                        }
+                        it
                     }
-                    it
                 }
             }
             SwingUtilities.invokeLater {

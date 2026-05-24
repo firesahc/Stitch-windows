@@ -161,6 +161,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
     private fun onMousePressed(e: MouseEvent) {
         touching = null
         dragging = false
+        dragDirty = false
         val (transX, transY) = getTranslate()
         val x = (e.x - transX) / scale
         val y = (e.y - transY) / scale

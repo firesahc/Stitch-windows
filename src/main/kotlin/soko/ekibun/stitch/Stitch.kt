@@ -50,6 +50,7 @@ object Stitch {
             undoTag = null
         }
 
+        @Synchronized
         fun updateUndo(tag: Any? = System.currentTimeMillis(), immediateSave: Boolean = true, runBeforeSave: () -> Unit) {
             if (tag != null && tag != undoTag) {
                 undoTag = tag
@@ -65,6 +66,7 @@ object Stitch {
         }
 
         var job: Job? = null
+        @Synchronized
         fun save() {
             runBlocking {
                 job?.cancelAndJoin()
@@ -83,6 +85,7 @@ object Stitch {
             }
         }
 
+        @Synchronized
         fun undo() {
             val last = stitchInfo.map { it.clone() }
             val lastSelect = selected.map { it }
@@ -94,6 +97,7 @@ object Stitch {
             selectedBak.addAll(lastSelect)
             stitchInfoBak.clear()
             stitchInfoBak.addAll(last)
+            undoTag = null
             save()
         }
 
@@ -160,7 +164,7 @@ object Stitch {
                 lastPoints = points
 
                 minV = max(minV, minO)
-                maxV = max(minV, max(maxV, maxO))
+                maxV = max(minV, min(maxV, maxO))
 
                 val va = maxV - (maxV - minV) * it.a
                 val vb = maxV - (maxV - minV) * it.b - 0.01f * sqrt(mag2)
@@ -235,7 +239,7 @@ object Stitch {
     fun combine(homo: Boolean, diff: Boolean, img0: StitchInfo, img1: StitchInfo): StitchInfo? {
         return try {
             val (dx, dy, drot, dscale) = StitchNative.computeOffset(img0, img1, homo, diff)
-            if ((dx != 0f || dy != 0f) &&
+            if ((dx != 0f || dy != 0f || drot != 0f || dscale != 1f) &&
                 abs(dx) < (img1.width + img0.width) / 2 &&
                 abs(dy) < (img1.height + img0.height) / 2
             ) {
