@@ -21,7 +21,7 @@ class EditorService(
             return
         }
         val total = project.selected.size
-        activity.progressLabel.text = "计算中 (0/$total)..."
+        activity.progressLabel.text = Strings.get("editor.progress", 0, total)
         activity.progressBar.value = 0
         activity.progressBar.maximum = total
         activity.progressRow.isVisible = true
@@ -38,7 +38,7 @@ class EditorService(
                         done++
                         val finalDone = done
                         SwingUtilities.invokeLater {
-                            activity.progressLabel.text = "计算中 ($finalDone/$total)..."
+                            activity.progressLabel.text = Strings.get("editor.progress", finalDone, total)
                             activity.progressBar.value = finalDone
                         }
                     }
