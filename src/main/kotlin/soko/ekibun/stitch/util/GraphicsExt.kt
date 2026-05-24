@@ -4,6 +4,8 @@ import java.awt.Color
 import java.awt.LinearGradientPaint
 import java.awt.MultipleGradientPaint.CycleMethod
 
+val PRIMARY_COLOR = Color(66, 132, 243)
+
 data class Rect(val left: Float, val top: Float, val right: Float, val bottom: Float) {
     fun width(): Float = if (right > left && isFinite()) right - left else 0f
     fun height(): Float = if (bottom > top && isFinite()) bottom - top else 0f

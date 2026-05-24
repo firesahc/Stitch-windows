@@ -61,6 +61,8 @@ fun main() {
     OpenCV.loadLocally()
     // Set up FlatLaf theme before any Swing components
     com.formdev.flatlaf.FlatLightLaf.setup()
+    val font = java.awt.Font("Microsoft YaHei", java.awt.Font.PLAIN, 13)
+    javax.swing.UIManager.put("defaultFont", font)
 
     SwingUtilities.invokeLater {
         MainView().isVisible = true

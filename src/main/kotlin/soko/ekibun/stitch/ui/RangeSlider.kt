@@ -26,7 +26,7 @@ class RangeSlider : JComponent() {
     var onRangeChange: ((Float, Float) -> Unit)? = null
     var onTouchUp: (() -> Unit)? = null
 
-    private val primaryColor = Color(66, 132, 243)
+    private val primaryColor = soko.ekibun.stitch.util.PRIMARY_COLOR
     private val opaqueColor = Color(136, 136, 136, 136)
 
     private var downObj = 0

@@ -27,7 +27,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
     private var downOffsetY = 0.0
     private var dragDirty = false
 
-    private val colorPrimary = Color(66, 132, 243)
+    private val colorPrimary = soko.ekibun.stitch.util.PRIMARY_COLOR
     private val colorUnselected = Color(136, 136, 136, 136)
 
     init {
