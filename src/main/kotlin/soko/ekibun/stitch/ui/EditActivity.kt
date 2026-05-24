@@ -314,6 +314,7 @@ class EditActivity {
         return JPanel(BorderLayout()).apply {
             add(JLabel(""), BorderLayout.CENTER)
             add(rightPanel, BorderLayout.EAST)
+            border = javax.swing.border.EmptyBorder(0, 0, 8, 0)
         }
     }
 
