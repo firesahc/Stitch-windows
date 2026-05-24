@@ -6,11 +6,12 @@ import java.text.MessageFormat
 import java.util.*
 
 object Strings {
-    private val props = Properties().apply {
-        load(InputStreamReader(
-            this::class.java.getResourceAsStream("/strings.properties"),
-            Charset.forName("UTF-8")
-        ))
+    private val props by lazy {
+        val stream = Strings::class.java.getResourceAsStream("/strings.properties")
+            ?: error("strings.properties not found on classpath")
+        Properties().apply {
+            InputStreamReader(stream, Charset.forName("UTF-8")).use { load(it) }
+        }
     }
 
     fun get(key: String, vararg args: Any?): String {

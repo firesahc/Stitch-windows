@@ -70,6 +70,7 @@ $RECYCLE.BIN/
 *.ap_
 output-metadata.json
 /release/
+/data/
 
 # ── Project excludes ──
 /policy/
