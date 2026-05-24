@@ -14,6 +14,8 @@ class RangeSlider : JComponent() {
         const val TYPE_RANGE = 0
         const val TYPE_GRADIENT = 1
         const val TYPE_CENTER = 2
+        const val HANDLE_RADIUS = 10.0
+        const val TRACK_THICKNESS = 3.0
     }
 
     var type = TYPE_RANGE
@@ -32,11 +34,11 @@ class RangeSlider : JComponent() {
     private var downObj = 0
 
     init {
-        preferredSize = Dimension(200, 30)
+        preferredSize = Dimension(200, 40)
         addMouseListener(object : MouseAdapter() {
             override fun mousePressed(e: MouseEvent) {
                 val w = width.toDouble()
-                val r = 7.0
+                val r = HANDLE_RADIUS
                 val ax = r + (w - 2 * r) * a
                 val bx = r + (w - 2 * r) * b
                 val ar = abs(e.x - r - (w - 2 * r) * a)
@@ -58,7 +60,7 @@ class RangeSlider : JComponent() {
             override fun mouseDragged(e: MouseEvent) {
                 if (downObj == 0) return
                 val w = width.toDouble()
-                val r = 7.0
+                val r = HANDLE_RADIUS
                 val newValue = ((e.x - r) / max(1.0, (w - 2 * r))).coerceIn(0.0, 1.0)
                 when (downObj) {
                     1 -> {
@@ -87,8 +89,8 @@ class RangeSlider : JComponent() {
         val h = height.toDouble()
         if (w <= 0 || h <= 0) return
 
-        val radius = 7.0
-        val thick = 1.0
+        val radius = HANDLE_RADIUS
+        val thick = TRACK_THICKNESS
 
         val ax = radius + (w - 2 * radius) * a
         val bx = radius + (w - 2 * radius) * b
@@ -108,8 +110,8 @@ class RangeSlider : JComponent() {
     }
 
     private fun drawGradient(g2d: Graphics2D, ax: Double, bx: Double, w: Double, h: Double) {
-        val radius = 7.0
-        val thick = 1.0
+        val radius = HANDLE_RADIUS
+        val thick = TRACK_THICKNESS
         if (ax != bx) {
             val grad = LinearGradientPaint(
                 ax.toFloat(), 0f, bx.toFloat(), 0f,
@@ -126,8 +128,8 @@ class RangeSlider : JComponent() {
     }
 
     private fun drawRange(g2d: Graphics2D, ax: Double, bx: Double, w: Double, h: Double) {
-        val radius = 7.0
-        val thick = 1.0
+        val radius = HANDLE_RADIUS
+        val thick = TRACK_THICKNESS
         g2d.color = opaqueColor
         g2d.fillRect(radius.toInt(), (h / 2 - thick).toInt(), (w - 2 * radius).toInt(), (thick * 2).toInt())
         g2d.color = primaryColor
@@ -135,8 +137,8 @@ class RangeSlider : JComponent() {
     }
 
     private fun drawCenter(g2d: Graphics2D, ax: Double, w: Double, h: Double) {
-        val radius = 7.0
-        val thick = 1.0
+        val radius = HANDLE_RADIUS
+        val thick = TRACK_THICKNESS
         g2d.color = opaqueColor
         g2d.fillRect(radius.toInt(), (h / 2 - thick).toInt(), (w - 2 * radius).toInt(), (thick * 2).toInt())
         g2d.color = primaryColor
