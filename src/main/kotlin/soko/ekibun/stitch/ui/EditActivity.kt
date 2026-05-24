@@ -76,13 +76,7 @@ class EditActivity {
         this.editorService = EditorService(projectKey, this)
     }
 
-    fun show() {
-        val frame = JFrame("Stitch - 编辑")
-        frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
-        frame.minimumSize = Dimension(800, 600)
-        frame.setSize(1000, 700)
-        frame.setLocationRelativeTo(null)
-
+    private fun createAppIcon(): java.awt.image.BufferedImage {
         val icon = java.awt.image.BufferedImage(32, 32, java.awt.image.BufferedImage.TYPE_INT_ARGB)
         val g = icon.createGraphics()
         g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
@@ -94,7 +88,17 @@ class EditActivity {
         val sw = fm.stringWidth("S")
         g.drawString("S", (32 - sw) / 2, 24)
         g.dispose()
-        frame.setIconImage(icon)
+        return icon
+    }
+
+    fun show() {
+        val frame = JFrame("Stitch - 编辑")
+        frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
+        frame.minimumSize = Dimension(800, 600)
+        frame.setSize(1000, 700)
+        frame.setLocationRelativeTo(null)
+
+        frame.setIconImage(createAppIcon())
 
         editView = EditorView(this)
         frame.add(editView, BorderLayout.CENTER)
