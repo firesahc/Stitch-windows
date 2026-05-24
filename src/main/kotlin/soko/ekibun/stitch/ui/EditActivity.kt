@@ -1,6 +1,7 @@
 package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.App
+import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.util.PRIMARY_COLOR
 import java.awt.*
@@ -72,7 +73,7 @@ class EditActivity {
 
     constructor(projectKey: String) {
         this.projectKey = projectKey
-        this.project = App.getProject(projectKey)
+        this.project = ProjectManager.getProject(projectKey)
     }
 
     fun show() {

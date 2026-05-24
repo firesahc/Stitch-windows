@@ -13,36 +13,7 @@ object App {
     }
 
     val bitmapCache by lazy { BitmapCache }
-    val projects = HashMap<String, Stitch.StitchProject>()
     val dispatcherIO = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-
-    fun getProject(projectKey: String): Stitch.StitchProject {
-        return projects.getOrPut(projectKey) { Stitch.StitchProject(projectKey) }
-    }
-
-    fun getProjects(): Array<File> {
-        val file = File(dataDirPath)
-        if (!file.exists()) return emptyArray()
-        return file.listFiles { f -> f.isDirectory } ?: emptyArray()
-    }
-
-    fun getProjectFile(projectKey: String): File {
-        return File(dataDirPath + File.separator + projectKey + File.separator + ".project")
-    }
-
-    fun newProject(): String = System.currentTimeMillis().toString(16)
-
-    fun clearProjects() {
-        val file = File(dataDirPath)
-        file.deleteRecursively()
-        projects.clear()
-    }
-
-    fun deleteProject(projectKey: String) {
-        val file = File(dataDirPath, projectKey)
-        projects.remove(projectKey)
-        file.deleteRecursively()
-    }
 }
 
 

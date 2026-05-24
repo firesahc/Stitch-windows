@@ -7,6 +7,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import soko.ekibun.stitch.util.PointF
+import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.util.Rect
 import kotlin.math.*
 
@@ -18,7 +19,7 @@ object Stitch {
         val projectKey: String
     ) {
         val file by lazy {
-            App.getProjectFile(projectKey)
+            ProjectManager.getProjectFile(projectKey)
         }
         val stitchInfo by lazy {
             val list = mutableListOf<StitchInfo>()

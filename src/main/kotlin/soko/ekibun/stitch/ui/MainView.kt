@@ -1,6 +1,7 @@
 package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.App
+import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
 import java.awt.*
 import java.awt.event.MouseAdapter
@@ -58,7 +59,7 @@ class MainView : JFrame() {
                         JOptionPane.OK_CANCEL_OPTION
                     )
                     if (result == JOptionPane.OK_OPTION) {
-                        App.deleteProject(selected.name)
+                        ProjectManager.deleteProject(selected.name)
                         loadProjects()
                     }
                 }
@@ -137,13 +138,13 @@ class MainView : JFrame() {
             chooser.isMultiSelectionEnabled = true
             val result = chooser.showOpenDialog(this)
             if (result == JFileChooser.APPROVE_OPTION) {
-                val key = App.newProject()
+                val key = ProjectManager.newProject()
                 chooser.selectedFiles.forEach { file ->
                     try {
                         val img = ImageIO.read(file)
                         if (img != null) {
                             val imgKey = App.bitmapCache.saveBitmap(key, img)
-                            val project = App.getProject(key)
+                            val project = ProjectManager.getProject(key)
                             project.updateUndo {
                                 project.stitchInfo.add(
                                     Stitch.StitchInfo(imgKey, img.width, img.height)
@@ -163,7 +164,7 @@ class MainView : JFrame() {
         openBtn.alignmentX = Component.CENTER_ALIGNMENT
         openBtn.maximumSize = Dimension(300, openBtn.preferredSize.height)
         openBtn.addActionListener {
-            val key = App.newProject()
+            val key = ProjectManager.newProject()
             EditActivity.open(this, key)
             loadProjects()
         }
@@ -172,7 +173,7 @@ class MainView : JFrame() {
         clearBtn.alignmentX = Component.CENTER_ALIGNMENT
         clearBtn.maximumSize = Dimension(300, clearBtn.preferredSize.height)
         clearBtn.addActionListener {
-            App.clearProjects()
+            ProjectManager.clearProjects()
             loadProjects()
         }
 
@@ -190,7 +191,7 @@ class MainView : JFrame() {
 
     fun loadProjects() {
         defaultListModel.clear()
-        App.getProjects().forEach { defaultListModel.addElement(it) }
+        ProjectManager.getProjects().forEach { defaultListModel.addElement(it) }
     }
 
     private fun formatProjectName(file: File): String {
