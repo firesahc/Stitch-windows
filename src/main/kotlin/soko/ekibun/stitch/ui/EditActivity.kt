@@ -1,13 +1,10 @@
 package soko.ekibun.stitch.ui
 
-import soko.ekibun.stitch.App
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.util.PRIMARY_COLOR
 import java.awt.*
 import java.awt.event.*
-import java.io.File
-import javax.imageio.ImageIO
 import javax.swing.*
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
@@ -21,14 +18,24 @@ class EditActivity {
                 editor.show()
             }
         }
+
+        val labelDx = "水平偏移"
+        val labelDy = "垂直偏移"
+        val labelTrim = "过渡"
+        val labelXrange = "水平范围"
+        val labelYrange = "垂直范围"
+        val labelScale = "缩放"
+        val labelRotate = "旋转"
     }
 
     private val projectKey: String
     val project: Stitch.StitchProject
 
-    private lateinit var editView: EditorView
+    private lateinit var editorService: EditorService
+
+    lateinit var editView: EditorView
     private lateinit var selectInfo: JLabel
-    private lateinit var seekbar: RangeSlider
+    lateinit var seekbar: RangeSlider
     private lateinit var numberView: JPanel
     private lateinit var numberA: JTextField
     private lateinit var numberB: JTextField
@@ -38,29 +45,21 @@ class EditActivity {
     private lateinit var dropdown: JComboBox<String>
     private lateinit var panelAuto: JPanel
     private lateinit var panelSeekbar: JPanel
-    private lateinit var switchHorizon: JCheckBox
+    lateinit var switchHorizon: JCheckBox
     private lateinit var tabPane: JPanel
     private lateinit var tabviews: List<JLabel>
-    private lateinit var progressRow: JPanel
-    private lateinit var progressBar: JProgressBar
-    private lateinit var progressLabel: JLabel
+    lateinit var progressRow: JPanel
+    lateinit var progressBar: JProgressBar
+    lateinit var progressLabel: JLabel
     private var suppressNumberListener = false
 
     enum class StitchType(val label: String) {
         AUTO("自动"), TILE("平铺"), MAN("手动")
     }
 
-    private var stitchType = StitchType.AUTO
+    var stitchType = StitchType.AUTO
 
-    private val labelDx = "水平偏移"
-    private val labelDy = "垂直偏移"
-    private val labelTrim = "过渡"
-    private val labelXrange = "水平范围"
-    private val labelYrange = "垂直范围"
-    private val labelScale = "缩放"
-    private val labelRotate = "旋转"
-
-    private val selectItems = mapOf(
+    val selectItems = mapOf(
         labelDx to (0 to false),
         labelDy to (0 to false),
         labelTrim to (2 to true),
@@ -69,11 +68,12 @@ class EditActivity {
         labelScale to (2 to false),
         labelRotate to (0 to false)
     )
-    private var selectIndex = labelDy
+    var selectIndex = labelDy
 
     constructor(projectKey: String) {
         this.projectKey = projectKey
         this.project = ProjectManager.getProject(projectKey)
+        this.editorService = EditorService(projectKey, this)
     }
 
     fun show() {
@@ -122,15 +122,15 @@ class EditActivity {
         })
         rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, Toolkit.getDefaultToolkit().menuShortcutKeyMask), "save")
         rootPane.actionMap.put("save", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) { saveImage() }
+            override fun actionPerformed(e: java.awt.event.ActionEvent) { editorService.saveImage() }
         })
         rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, Toolkit.getDefaultToolkit().menuShortcutKeyMask), "stitch")
         rootPane.actionMap.put("stitch", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) { stitch(true, true) }
+            override fun actionPerformed(e: java.awt.event.ActionEvent) { editorService.stitch(true, true) }
         })
         rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete")
         rootPane.actionMap.put("delete", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) { removeSelected() }
+            override fun actionPerformed(e: java.awt.event.ActionEvent) { editorService.removeSelected() }
         })
         rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "delete")
 
@@ -152,7 +152,7 @@ class EditActivity {
             chooser.isMultiSelectionEnabled = true
             val result = chooser.showOpenDialog(null)
             if (result == JFileChooser.APPROVE_OPTION) {
-                chooser.selectedFiles.forEach { addImage(it) }
+                chooser.selectedFiles.forEach { editorService.addImage(it) }
             }
         }
 
@@ -182,8 +182,8 @@ class EditActivity {
         selectInfo = JLabel("已选中 0/0")
         val selectAllBtn = JButton("全选").apply { addActionListener { selectAll() } }
         val selectClearBtn = JButton("取消选择").apply { addActionListener { selectClear() } }
-        val swapBtn = JButton("交换").apply { addActionListener { swapSelected() } }
-        val removeBtn = JButton("删除").apply { addActionListener { removeSelected() } }
+        val swapBtn = JButton("交换").apply { addActionListener { editorService.swapSelected() } }
+        val removeBtn = JButton("删除").apply { addActionListener { editorService.removeSelected() } }
         return JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
             add(selectInfo); add(selectAllBtn); add(selectClearBtn); add(swapBtn); add(removeBtn)
         }
@@ -213,7 +213,7 @@ class EditActivity {
         val stitchBtn = JButton("自动拼接").apply {
             foreground = Color.WHITE
             background = PRIMARY_COLOR
-            addActionListener { stitch(homoCb.isSelected, diffCb.isSelected) }
+            addActionListener { editorService.stitch(homoCb.isSelected, diffCb.isSelected) }
         }
         panelAuto = JPanel(FlowLayout(FlowLayout.LEFT, 10, 5)).apply {
             add(diffCb); add(homoCb); add(stitchBtn)
@@ -240,7 +240,7 @@ class EditActivity {
                 preferredSize = Dimension(200, 30)
             }
             seekbar.onRangeChange = { a, b ->
-                project.updateUndo(seekbar) { setNumber(a, b, true) }
+                project.updateUndo(seekbar) { editorService.setNumber(a, b, true) }
                 updateNumber()
                 editView.update()
             }
@@ -261,7 +261,7 @@ class EditActivity {
                 private fun onNumberAChanged() {
                     if (suppressNumberListener) return
                     val num = numberA.text.toFloatOrNull() ?: return
-                    project.updateUndo(numberA) { setNumber(num) }
+                    project.updateUndo(numberA) { editorService.setNumber(num) }
                     seekbar.repaint()
                     editView.update()
                 }
@@ -274,7 +274,7 @@ class EditActivity {
                 private fun onNumberBChanged() {
                     if (suppressNumberListener) return
                     val num = numberB.text.toFloatOrNull() ?: return
-                    project.updateUndo(numberB) { setNumber(null, num) }
+                    project.updateUndo(numberB) { editorService.setNumber(null, num) }
                     seekbar.repaint()
                     editView.update()
                 }
@@ -283,13 +283,13 @@ class EditActivity {
             numberDec.addActionListener {
                 val num = (numberA.text.toFloatOrNull() ?: 0f) -
                     Math.pow(10.0, -(selectItems[selectIndex]?.first ?: 0).toDouble()).toFloat()
-                project.updateUndo(this) { setNumber(num) }
+                project.updateUndo(this) { editorService.setNumber(num) }
                 updateNumberView(num); seekbar.repaint(); editView.update()
             }
             numberInc.addActionListener {
                 val num = (numberA.text.toFloatOrNull() ?: 0f) +
                     Math.pow(10.0, -(selectItems[selectIndex]?.first ?: 0).toDouble()).toFloat()
-                project.updateUndo(this) { setNumber(num) }
+                project.updateUndo(this) { editorService.setNumber(num) }
                 updateNumberView(num); seekbar.repaint(); editView.update()
             }
 
@@ -306,7 +306,7 @@ class EditActivity {
         val saveBtn = JButton("保存").apply {
             foreground = Color.WHITE
             background = PRIMARY_COLOR
-            addActionListener { saveImage() }
+            addActionListener { editorService.saveImage() }
         }
         val rightPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
             add(saveBtn)
@@ -351,7 +351,7 @@ class EditActivity {
         dropdown.isVisible = stitchType == StitchType.MAN
     }
 
-    private val selectedStitchInfo: List<Stitch.StitchInfo>
+    val selectedStitchInfo: List<Stitch.StitchInfo>
         get() = when {
             stitchType == StitchType.MAN && selectIndex in listOf(labelDx, labelDy, labelTrim) ->
                 project.stitchInfo.filterIndexed { i, v ->
@@ -467,40 +467,6 @@ class EditActivity {
         suppressNumberListener = false
     }
 
-    fun setNumber(a: Float? = null, b: Float? = null, relative: Boolean = false) {
-        val selected = selectedStitchInfo
-        if (selected.isNotEmpty()) selected.forEach {
-            if (stitchType == StitchType.TILE) {
-                val aa = a ?: seekbar.a
-                val bb = b ?: seekbar.b
-                val rest = 1 - bb + aa
-                it.a = if (rest > 0) aa / rest else 0f
-                it.b = it.a
-                if (switchHorizon.isSelected) {
-                    it.dx = (bb - aa) * it.width
-                    it.dy = 0f
-                } else {
-                    it.dy = (bb - aa) * it.height
-                    it.dx = 0f
-                }
-            } else when (selectIndex) {
-                labelDx -> if (a != null) it.dx = if (relative) (a * 2 - 1) * it.width else a
-                labelDy -> if (a != null) it.dy = if (relative) (a * 2 - 1) * it.height else a
-                labelTrim -> { if (a != null) it.a = a; if (b != null) it.b = b }
-                labelXrange -> {
-                    if (a != null) it.xa = if (!relative && it.width > 0) a / it.width else a
-                    if (b != null) it.xb = if (!relative && it.width > 0) b / it.width else b
-                }
-                labelYrange -> {
-                    if (a != null) it.ya = if (!relative && it.height > 0) a / it.height else a
-                    if (b != null) it.yb = if (!relative && it.height > 0) b / it.height else b
-                }
-                labelScale -> if (a != null) it.dscale = if (relative) (a * 2) else a
-                labelRotate -> if (a != null) it.drot = if (relative) (a * 2 - 1) * 180 else a
-            }
-        }
-    }
-
     fun selectToggle(info: Stitch.StitchInfo) {
         if (!project.selected.remove(info.imageKey)) project.selected.add(info.imageKey)
         updateSelectInfo()
@@ -515,127 +481,5 @@ class EditActivity {
     private fun selectClear() {
         project.selected.clear()
         updateSelectInfo()
-    }
-
-    private fun addImage(file: File) {
-        try {
-            val bufferedImage = ImageIO.read(file)
-            if (bufferedImage == null) {
-                JOptionPane.showMessageDialog(null, "无法读取图片：${file.name}", "错误", JOptionPane.ERROR_MESSAGE)
-                return
-            }
-            val key = App.bitmapCache.saveBitmap(projectKey, bufferedImage)
-            val info = Stitch.StitchInfo(key, bufferedImage.width, bufferedImage.height)
-            project.updateUndo { project.stitchInfo.add(info); project.selected.add(info.imageKey) }
-            updateSelectInfo()
-        } catch (e: Exception) {
-            JOptionPane.showMessageDialog(null, "加载图片失败：${e.message}", "错误", JOptionPane.ERROR_MESSAGE)
-        }
-    }
-
-    private fun stitch(homo: Boolean, diff: Boolean) {
-        if (project.selected.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "未选择图片", "警告", JOptionPane.WARNING_MESSAGE)
-            return
-        }
-        val total = project.selected.size
-        progressLabel.text = "计算中 (0/$total)..."
-        progressBar.value = 0
-        progressBar.maximum = total
-        progressRow.isVisible = true
-
-        Thread {
-            var done = 0
-            project.updateUndo {
-                project.stitchInfo.reduceOrNull { acc, it ->
-                    if (project.selected.contains(it.imageKey)) {
-                        Stitch.combine(homo, diff, acc, it)?.let { data ->
-                            it.dx = data.dx
-                            it.dy = data.dy
-                            it.drot = data.drot
-                            it.dscale = data.dscale
-                        }
-                        done++
-                        val finalDone = done
-                        SwingUtilities.invokeLater {
-                            progressLabel.text = "计算中 ($finalDone/$total)..."
-                            progressBar.value = finalDone
-                        }
-                    }
-                    it
-                }
-            }
-            SwingUtilities.invokeLater {
-                progressRow.isVisible = false
-                updateSelectInfo()
-            }
-        }.apply { isDaemon = true }.start()
-    }
-
-    private fun swapSelected() {
-        if (project.selected.size < 2) {
-            JOptionPane.showMessageDialog(null, "请选择至少两张图片进行交换", "警告", JOptionPane.WARNING_MESSAGE)
-            return
-        }
-        project.updateUndo {
-            val selected = project.selected.toList()
-            val i = selected.last().let {
-                project.stitchInfo.indexOfFirst { info -> info.imageKey == it }
-            }
-            if (i < 0) return@updateUndo
-            var a = project.stitchInfo[i]
-            val adx = a.dx; val ady = a.dy; val adr = a.drot; val ads = a.dscale
-            for (indic in 0 until selected.size - 1) {
-                val j = selected[indic].let {
-                    project.stitchInfo.indexOfFirst { info -> info.imageKey == it }
-                }
-                if (j < 0) return@updateUndo
-                val b = project.stitchInfo.set(j, a)
-                a.dx = b.dx; a.dy = b.dy; a.drot = b.drot; a.dscale = b.dscale
-                a = b
-            }
-            project.stitchInfo[i] = a
-            a.dx = adx; a.dy = ady; a.drot = adr; a.dscale = ads
-        }
-        updateSelectInfo()
-    }
-
-    private fun removeSelected() {
-        if (project.selected.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "未选择图片", "警告", JOptionPane.WARNING_MESSAGE)
-            return
-        }
-        val result = JOptionPane.showConfirmDialog(null,
-            "确定要删除已选中的 ${project.selected.size} 张图片吗？",
-            "确认删除", JOptionPane.OK_CANCEL_OPTION)
-        if (result == JOptionPane.OK_OPTION) {
-            project.updateUndo {
-                project.stitchInfo.removeAll { project.selected.contains(it.imageKey) }
-                project.selected.clear()
-            }
-            updateSelectInfo()
-        }
-    }
-
-    private fun saveImage() {
-        if (project.stitchInfo.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "请先添加图片", "警告", JOptionPane.WARNING_MESSAGE)
-            return
-        }
-        val chooser = JFileChooser()
-        chooser.dialogTitle = "保存图片"
-        chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter("PNG 图片", "png")
-        chooser.selectedFile = File("Stitch$projectKey.png")
-        val result = chooser.showSaveDialog(null)
-        if (result != JFileChooser.APPROVE_OPTION) return
-
-        try {
-            val file = chooser.selectedFile
-            val image = editView.drawToBitmap()
-            javax.imageio.ImageIO.write(image, "png", file)
-            JOptionPane.showMessageDialog(null, "图片已保存至 ${file.absolutePath}", "保存成功", JOptionPane.INFORMATION_MESSAGE)
-        } catch (e: Exception) {
-            JOptionPane.showMessageDialog(null, "保存失败：${e.message}", "错误", JOptionPane.ERROR_MESSAGE)
-        }
     }
 }
