@@ -3,6 +3,7 @@ package soko.ekibun.stitch.ui
 import soko.ekibun.stitch.App
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.util.Strings
 import java.awt.*
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -19,7 +20,7 @@ class MainView : JFrame() {
     private val defaultListModel = DefaultListModel<File>()
 
     init {
-        title = "Stitch"
+        title = Strings.get("main.title")
         defaultCloseOperation = EXIT_ON_CLOSE
         minimumSize = Dimension(500, 400)
         setSize(600, 500)
@@ -48,14 +49,14 @@ class MainView : JFrame() {
         projectList.model = defaultListModel
         projectList.cellRenderer = ProjectListRenderer()
         val popupMenu = JPopupMenu()
-        val deleteItem = JMenuItem("删除此项目").apply {
+        val deleteItem = JMenuItem(Strings.get("main.deleteProject")).apply {
             addActionListener {
                 val selected = projectList.selectedValue
                 if (selected != null) {
                     val result = JOptionPane.showConfirmDialog(
                         this@MainView,
-                        "确定要删除此历史记录吗？\n${formatProjectName(selected)}",
-                        "确认删除",
+                        Strings.get("main.deleteConfirm", formatProjectName(selected)),
+                        Strings.get("dialog.confirmTitle"),
                         JOptionPane.OK_CANCEL_OPTION
                     )
                     if (result == JOptionPane.OK_OPTION) {
@@ -97,7 +98,7 @@ class MainView : JFrame() {
 
         // Bottom bar
         val bottomBar = JPanel(FlowLayout(FlowLayout.RIGHT, 10, 10))
-        val aboutBtn = JButton("关于")
+        val aboutBtn = JButton(Strings.get("main.about"))
         aboutBtn.addActionListener { AboutDialog.show(this) }
         aboutBtn.border = EmptyBorder(5, 10, 5, 10)
         bottomBar.add(aboutBtn)
@@ -119,22 +120,22 @@ class MainView : JFrame() {
         panel.border = EmptyBorder(20, 20, 20, 20)
         panel.background = Color(220, 220, 220)
 
-        val label = JLabel("Stitch")
+        val label = JLabel(Strings.get("main.title"))
         label.font = Font(Font.SANS_SERIF, Font.BOLD, 24)
         label.alignmentX = Component.CENTER_ALIGNMENT
 
-        val subLabel = JLabel("截图拼接助手")
+        val subLabel = JLabel(Strings.get("main.subtitle"))
         subLabel.font = Font(Font.SANS_SERIF, Font.PLAIN, 13)
         subLabel.foreground = Color.GRAY
         subLabel.alignmentX = Component.CENTER_ALIGNMENT
 
-        val fromGalleryBtn = JButton("从文件夹导入")
+        val fromGalleryBtn = JButton(Strings.get("main.import"))
         fromGalleryBtn.alignmentX = Component.CENTER_ALIGNMENT
         fromGalleryBtn.maximumSize = Dimension(300, fromGalleryBtn.preferredSize.height)
         fromGalleryBtn.addActionListener {
             val chooser = JFileChooser()
-            chooser.dialogTitle = "选择图片"
-            chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter("图片文件", "png", "jpg", "jpeg", "bmp")
+            chooser.dialogTitle = Strings.get("dialog.selectImage")
+            chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter(Strings.get("dialog.imageFiles"), "png", "jpg", "jpeg", "bmp")
             chooser.isMultiSelectionEnabled = true
             val result = chooser.showOpenDialog(this)
             if (result == JFileChooser.APPROVE_OPTION) {
@@ -152,7 +153,7 @@ class MainView : JFrame() {
                             }
                         }
                     } catch (ex: Exception) {
-                        JOptionPane.showMessageDialog(null, "操作失败：${ex.message}", "错误", JOptionPane.ERROR_MESSAGE)
+                        JOptionPane.showMessageDialog(null, Strings.get("dialog.operationFailed", ex.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
                     }
                 }
                 EditActivity.open(this, key)
@@ -160,7 +161,7 @@ class MainView : JFrame() {
             }
         }
 
-        val openBtn = JButton("新建项目")
+        val openBtn = JButton(Strings.get("main.newProject"))
         openBtn.alignmentX = Component.CENTER_ALIGNMENT
         openBtn.maximumSize = Dimension(300, openBtn.preferredSize.height)
         openBtn.addActionListener {
@@ -169,7 +170,7 @@ class MainView : JFrame() {
             loadProjects()
         }
 
-        val clearBtn = JButton("清除历史")
+        val clearBtn = JButton(Strings.get("main.clearHistory"))
         clearBtn.alignmentX = Component.CENTER_ALIGNMENT
         clearBtn.maximumSize = Dimension(300, clearBtn.preferredSize.height)
         clearBtn.addActionListener {

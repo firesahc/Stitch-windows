@@ -5,6 +5,7 @@ import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
 import java.io.File
 import javax.imageio.ImageIO
+import soko.ekibun.stitch.util.Strings
 import javax.swing.*
 
 class EditorService(
@@ -16,7 +17,7 @@ class EditorService(
 
     fun stitch(homo: Boolean, diff: Boolean) {
         if (project.selected.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "未选择图片", "警告", JOptionPane.WARNING_MESSAGE)
+            JOptionPane.showMessageDialog(null, Strings.get("dialog.noSelection"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
             return
         }
         val total = project.selected.size
@@ -53,7 +54,7 @@ class EditorService(
 
     fun swapSelected() {
         if (project.selected.size < 2) {
-            JOptionPane.showMessageDialog(null, "请选择至少两张图片进行交换", "警告", JOptionPane.WARNING_MESSAGE)
+            JOptionPane.showMessageDialog(null, Strings.get("dialog.selectTwoImages"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
             return
         }
         project.updateUndo {
@@ -81,12 +82,12 @@ class EditorService(
 
     fun removeSelected(): Boolean {
         if (project.selected.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "未选择图片", "警告", JOptionPane.WARNING_MESSAGE)
+            JOptionPane.showMessageDialog(null, Strings.get("dialog.noSelection"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
             return false
         }
         val result = JOptionPane.showConfirmDialog(null,
-            "确定要删除已选中的 ${project.selected.size} 张图片吗？",
-            "确认删除", JOptionPane.OK_CANCEL_OPTION)
+            Strings.get("dialog.confirmDelete", project.selected.size),
+            Strings.get("dialog.confirmTitle"), JOptionPane.OK_CANCEL_OPTION)
         if (result == JOptionPane.OK_OPTION) {
             project.updateUndo {
                 project.stitchInfo.removeAll { project.selected.contains(it.imageKey) }
@@ -100,12 +101,12 @@ class EditorService(
 
     fun saveImage(): Boolean {
         if (project.stitchInfo.isEmpty()) {
-            JOptionPane.showMessageDialog(null, "请先添加图片", "警告", JOptionPane.WARNING_MESSAGE)
+            JOptionPane.showMessageDialog(null, Strings.get("dialog.noImages"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
             return false
         }
         val chooser = JFileChooser()
-        chooser.dialogTitle = "保存图片"
-        chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter("PNG 图片", "png")
+        chooser.dialogTitle = Strings.get("dialog.saveImage")
+        chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter(Strings.get("dialog.pngImage"), "png")
         chooser.selectedFile = File("Stitch$projectKey.png")
         val result = chooser.showSaveDialog(null)
         if (result != JFileChooser.APPROVE_OPTION) return false
@@ -114,10 +115,10 @@ class EditorService(
             val file = chooser.selectedFile
             val image = activity.editView.drawToBitmap()
             ImageIO.write(image, "png", file)
-            JOptionPane.showMessageDialog(null, "图片已保存至 ${file.absolutePath}", "保存成功", JOptionPane.INFORMATION_MESSAGE)
+            JOptionPane.showMessageDialog(null, Strings.get("dialog.saved", file.absolutePath), Strings.get("common.success"), JOptionPane.INFORMATION_MESSAGE)
             return true
         } catch (e: Exception) {
-            JOptionPane.showMessageDialog(null, "保存失败：${e.message}", "错误", JOptionPane.ERROR_MESSAGE)
+            JOptionPane.showMessageDialog(null, Strings.get("dialog.saveFail", e.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
             return false
         }
     }
@@ -126,7 +127,7 @@ class EditorService(
         try {
             val bufferedImage = ImageIO.read(file)
             if (bufferedImage == null) {
-                JOptionPane.showMessageDialog(null, "无法读取图片：${file.name}", "错误", JOptionPane.ERROR_MESSAGE)
+                JOptionPane.showMessageDialog(null, Strings.get("dialog.imageLoadFailed", file.name), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
                 return false
             }
             val key = App.bitmapCache.saveBitmap(projectKey, bufferedImage)
@@ -135,7 +136,7 @@ class EditorService(
             activity.updateSelectInfo()
             return true
         } catch (e: Exception) {
-            JOptionPane.showMessageDialog(null, "加载图片失败：${e.message}", "错误", JOptionPane.ERROR_MESSAGE)
+            JOptionPane.showMessageDialog(null, Strings.get("dialog.imageLoadError", e.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
             return false
         }
     }

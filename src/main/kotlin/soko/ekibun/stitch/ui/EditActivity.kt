@@ -3,6 +3,7 @@ package soko.ekibun.stitch.ui
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.util.PRIMARY_COLOR
+import soko.ekibun.stitch.util.Strings
 import java.awt.*
 import java.awt.event.*
 import javax.swing.*
@@ -92,7 +93,7 @@ class EditActivity {
     }
 
     fun show() {
-        val frame = JFrame("Stitch - 编辑")
+        val frame = JFrame(Strings.get("edit.title"))
         frame.defaultCloseOperation = JFrame.DISPOSE_ON_CLOSE
         frame.minimumSize = Dimension(800, 600)
         frame.setSize(1000, 700)
@@ -145,14 +146,14 @@ class EditActivity {
     }
 
     private fun createTopBar(): JPanel {
-        val undoBtn = JButton("撤销")
+        val undoBtn = JButton(Strings.get("edit.undo"))
         undoBtn.addActionListener { project.undo(); updateSelectInfo() }
 
-        val importBtn = JButton("添加图片")
+        val importBtn = JButton(Strings.get("edit.addImage"))
         importBtn.addActionListener {
             val chooser = JFileChooser()
-            chooser.dialogTitle = "选择图片"
-            chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter("图片文件", "png", "jpg", "jpeg", "bmp")
+            chooser.dialogTitle = Strings.get("dialog.selectImage")
+            chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter(Strings.get("dialog.imageFiles"), "png", "jpg", "jpeg", "bmp")
             chooser.isMultiSelectionEnabled = true
             val result = chooser.showOpenDialog(null)
             if (result == JFileChooser.APPROVE_OPTION) {
@@ -183,11 +184,11 @@ class EditActivity {
     }
 
     private fun createSelectRow(): JPanel {
-        selectInfo = JLabel("已选中 0/0")
-        val selectAllBtn = JButton("全选").apply { addActionListener { selectAll() } }
-        val selectClearBtn = JButton("取消选择").apply { addActionListener { selectClear() } }
-        val swapBtn = JButton("交换").apply { addActionListener { editorService.swapSelected() } }
-        val removeBtn = JButton("删除").apply { addActionListener { editorService.removeSelected() } }
+        selectInfo = JLabel(Strings.get("edit.selected", 0, 0))
+        val selectAllBtn = JButton(Strings.get("edit.selectAll")).apply { addActionListener { selectAll() } }
+        val selectClearBtn = JButton(Strings.get("edit.deselect")).apply { addActionListener { selectClear() } }
+        val swapBtn = JButton(Strings.get("edit.swap")).apply { addActionListener { editorService.swapSelected() } }
+        val removeBtn = JButton(Strings.get("edit.delete")).apply { addActionListener { editorService.removeSelected() } }
         return JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
             add(selectInfo); add(selectAllBtn); add(selectClearBtn); add(swapBtn); add(removeBtn)
         }
@@ -212,9 +213,9 @@ class EditActivity {
     }
 
     private fun createAutoPanel(): JPanel {
-        val diffCb = JCheckBox("差异模式").apply { isSelected = true }
-        val homoCb = JCheckBox("特征匹配")
-        val stitchBtn = JButton("自动拼接").apply {
+        val diffCb = JCheckBox(Strings.get("edit.diffMode")).apply { isSelected = true }
+        val homoCb = JCheckBox(Strings.get("edit.featureMatch"))
+        val stitchBtn = JButton(Strings.get("edit.stitch")).apply {
             foreground = Color.WHITE
             background = PRIMARY_COLOR
             addActionListener { editorService.stitch(homoCb.isSelected, diffCb.isSelected) }
@@ -227,7 +228,7 @@ class EditActivity {
 
     private fun createSeekbarPanel(): JPanel {
         panelSeekbar = JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
-            switchHorizon = JCheckBox("水平")
+            switchHorizon = JCheckBox(Strings.get("edit.horizon"))
             dropdown = JComboBox<String>().apply {
                 selectItems.keys.forEach { addItem(it) }
                 selectedItem = selectIndex
@@ -307,7 +308,7 @@ class EditActivity {
     }
 
     private fun createActionRow(): JPanel {
-        val saveBtn = JButton("保存").apply {
+        val saveBtn = JButton(Strings.get("edit.save")).apply {
             foreground = Color.WHITE
             background = PRIMARY_COLOR
             addActionListener { editorService.saveImage() }
@@ -335,7 +336,7 @@ class EditActivity {
 
     fun updateSelectInfo() {
         editView.update()
-        selectInfo.text = "已选中 ${project.selected.size}/${project.stitchInfo.size}"
+        selectInfo.text = Strings.get("edit.selected", project.selected.size, project.stitchInfo.size)
         updateTab()
         updateSeekbar()
         updateNumber()
