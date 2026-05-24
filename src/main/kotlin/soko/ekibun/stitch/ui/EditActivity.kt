@@ -261,7 +261,7 @@ class EditActivity {
                     if (suppressNumberListener) return
                     val num = numberA.text.toFloatOrNull() ?: return
                     project.updateUndo(numberA) { setNumber(num) }
-                    seekbar.draw()
+                    seekbar.repaint()
                     editView.update()
                 }
             })
@@ -274,7 +274,7 @@ class EditActivity {
                     if (suppressNumberListener) return
                     val num = numberB.text.toFloatOrNull() ?: return
                     project.updateUndo(numberB) { setNumber(null, num) }
-                    seekbar.draw()
+                    seekbar.repaint()
                     editView.update()
                 }
             })
@@ -283,13 +283,13 @@ class EditActivity {
                 val num = (numberA.text.toFloatOrNull() ?: 0f) -
                     Math.pow(10.0, -(selectItems[selectIndex]?.first ?: 0).toDouble()).toFloat()
                 project.updateUndo(this) { setNumber(num) }
-                updateNumberView(num); seekbar.draw(); editView.update()
+                updateNumberView(num); seekbar.repaint(); editView.update()
             }
             numberInc.addActionListener {
                 val num = (numberA.text.toFloatOrNull() ?: 0f) +
                     Math.pow(10.0, -(selectItems[selectIndex]?.first ?: 0).toDouble()).toFloat()
                 project.updateUndo(this) { setNumber(num) }
-                updateNumberView(num); seekbar.draw(); editView.update()
+                updateNumberView(num); seekbar.repaint(); editView.update()
             }
 
             val numRow = JPanel(FlowLayout(FlowLayout.CENTER, 4, 0))
@@ -406,7 +406,7 @@ class EditActivity {
                     seekbar.a = selected.map { (it.drot / 360) + 0.5f }.average().toFloat()
                 }
             }
-            seekbar.draw()
+            seekbar.repaint()
         } else {
             seekbar.isEnabled = false
         }

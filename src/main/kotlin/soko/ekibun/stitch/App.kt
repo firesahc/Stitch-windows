@@ -14,9 +14,7 @@ object App {
 
     val bitmapCache by lazy { BitmapCache }
     val projects = HashMap<String, Stitch.StitchProject>()
-    val preferencesStore = PreferencesStore()
     val dispatcherIO = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-    var captureProject: String? = null
 
     fun getProject(projectKey: String): Stitch.StitchProject {
         return projects.getOrPut(projectKey) { Stitch.StitchProject(projectKey) }
@@ -47,14 +45,6 @@ object App {
     }
 }
 
-class PreferencesStore {
-    private val store = mutableMapOf<String, Any>()
-
-    fun getInt(key: String, default: Int): Int = (store[key] as? Int) ?: default
-    fun putInt(key: String, value: Int) { store[key] = value }
-    fun getString(key: String, default: String): String = (store[key] as? String) ?: default
-    fun putString(key: String, value: String) { store[key] = value }
-}
 
 fun main() {
     // Load OpenCV native library before any other setup

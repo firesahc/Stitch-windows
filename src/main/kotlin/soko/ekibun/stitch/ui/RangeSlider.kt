@@ -145,7 +145,5 @@ class RangeSlider : JComponent() {
         g2d.fillRect((w / 2).toInt(), (h / 2 - thick).toInt(), (ax - w / 2).toInt(), (thick * 2).toInt())
     }
 
-    fun draw() {
-        repaint()
-    }
+
 }
