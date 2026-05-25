@@ -1,7 +1,6 @@
 package soko.ekibun.stitch.ui
 
-import soko.ekibun.stitch.App
-import soko.ekibun.stitch.ProjectManager
+import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.Strings
@@ -15,7 +14,7 @@ import javax.imageio.ImageIO
 import javax.swing.*
 import javax.swing.border.EmptyBorder
 
-class MainView : JFrame() {
+class MainView(private val appContext: AppContext) : JFrame() {
 
     private val projectList = JList<File>()
     private val defaultListModel = DefaultListModel<File>()
@@ -50,7 +49,7 @@ class MainView : JFrame() {
                         JOptionPane.OK_CANCEL_OPTION
                     )
                     if (result == JOptionPane.OK_OPTION) {
-                        ProjectManager.deleteProject(selected.name)
+                        appContext.projectManager.deleteProject(selected.name)
                         loadProjects()
                     }
                 }
@@ -63,7 +62,7 @@ class MainView : JFrame() {
                 if (e.clickCount == 2) {
                     val selected = projectList.selectedValue
                     if (selected != null) {
-                        EditActivity.open(this@MainView, selected.name)
+                        EditActivity.open(appContext, this@MainView, selected.name)
                     }
                 }
             }
@@ -129,13 +128,13 @@ class MainView : JFrame() {
             chooser.isMultiSelectionEnabled = true
             val result = chooser.showOpenDialog(this)
             if (result == JFileChooser.APPROVE_OPTION) {
-                val key = ProjectManager.newProject()
+                val key = appContext.projectManager.newProject()
                 chooser.selectedFiles.forEach { file ->
                     try {
                         val img = ImageIO.read(file)
                         if (img != null) {
-                            val imgKey = App.bitmapCache.saveBitmap(key, img)
-                            val project = ProjectManager.getProject(key)
+                            val imgKey = appContext.bitmapCache.saveBitmap(key, img)
+                            val project = appContext.projectManager.getProject(key)
                             project.updateUndo {
                                 project.stitchInfo.add(
                                     Stitch.StitchInfo(imgKey, img.width, img.height)
@@ -146,7 +145,7 @@ class MainView : JFrame() {
                         JOptionPane.showMessageDialog(null, Strings.get("dialog.operationFailed", ex.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
                     }
                 }
-                EditActivity.open(this, key)
+                EditActivity.open(appContext, this, key)
                 loadProjects()
             }
         }
@@ -155,8 +154,8 @@ class MainView : JFrame() {
         openBtn.alignmentX = Component.CENTER_ALIGNMENT
         openBtn.maximumSize = Dimension(300, openBtn.preferredSize.height)
         openBtn.addActionListener {
-            val key = ProjectManager.newProject()
-            EditActivity.open(this, key)
+            val key = appContext.projectManager.newProject()
+            EditActivity.open(appContext, this, key)
             loadProjects()
         }
 
@@ -164,7 +163,7 @@ class MainView : JFrame() {
         clearBtn.alignmentX = Component.CENTER_ALIGNMENT
         clearBtn.maximumSize = Dimension(300, clearBtn.preferredSize.height)
         clearBtn.addActionListener {
-            ProjectManager.clearProjects()
+            appContext.projectManager.clearProjects()
             loadProjects()
         }
 
@@ -182,7 +181,7 @@ class MainView : JFrame() {
 
     fun loadProjects() {
         defaultListModel.clear()
-        ProjectManager.getProjects().forEach { defaultListModel.addElement(it) }
+        appContext.projectManager.getProjects().forEach { defaultListModel.addElement(it) }
     }
 
     private fun formatProjectName(file: File): String {

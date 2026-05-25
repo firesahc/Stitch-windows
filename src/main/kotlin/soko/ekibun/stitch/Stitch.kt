@@ -6,7 +6,6 @@ import kotlinx.coroutines.runBlocking
 import soko.ekibun.stitch.Renderer
 import soko.ekibun.stitch.service.UndoManager
 import soko.ekibun.stitch.util.PointF
-import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.util.Rect
 import kotlin.math.*
 
@@ -14,15 +13,16 @@ object Stitch {
 
     private val gson = Gson()
 
-    data class StitchProject(
-        val projectKey: String
+    class StitchProject(
+        val projectKey: String,
+        private val appContext: AppContext,
     ) {
         val file by lazy {
-            ProjectManager.getProjectFile(projectKey)
+            appContext.projectManager.getProjectFile(projectKey)
         }
         val stitchInfo by lazy {
             val list = mutableListOf<StitchInfo>()
-            if (file.exists()) runBlocking(App.dispatcherIO) {
+            if (file.exists()) runBlocking(appContext.dispatcherIO) {
                 try {
                     list.addAll(
                         gson.fromJson<ArrayList<StitchInfo>>(
@@ -49,7 +49,7 @@ object Stitch {
 
         @Synchronized
         fun save() {
-            undoManager.save(file, stitchInfo, gson)
+            undoManager.save(file, stitchInfo, gson, appContext.dispatcherIO)
         }
 
         @Synchronized
@@ -155,7 +155,7 @@ object Stitch {
                 gradientPaintColor = gradientPaintColor,
                 stitchInfo = stitchInfo,
                 selected = selected,
-                bitmapCache = App.bitmapCache,
+                bitmapCache = appContext.bitmapCache,
             )
         }
     }

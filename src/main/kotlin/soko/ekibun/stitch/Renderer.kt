@@ -1,5 +1,6 @@
 package soko.ekibun.stitch
 
+import soko.ekibun.stitch.interfaces.IBitmapCache
 import soko.ekibun.stitch.util.GraphicsHelper
 import java.awt.AlphaComposite
 import java.awt.Graphics2D
@@ -13,7 +14,7 @@ object Renderer {
         gradientPaintColor: Int,
         stitchInfo: List<Stitch.StitchInfo>,
         selected: Set<String>,
-        bitmapCache: BitmapCache,
+        bitmapCache: IBitmapCache,
     ) {
         val srcRange = IntArray(4)
         for (i in 0 until stitchInfo.size) {

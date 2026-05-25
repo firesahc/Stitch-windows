@@ -1,32 +1,22 @@
 package soko.ekibun.stitch.ui
 
 import kotlinx.coroutines.*
-import soko.ekibun.stitch.App
-import soko.ekibun.stitch.ProjectManager
+import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
-import soko.ekibun.stitch.StitchNative
-import soko.ekibun.stitch.interfaces.IStitchNative
-import soko.ekibun.stitch.service.StitchService
 import java.io.File
 import javax.imageio.ImageIO
 import soko.ekibun.stitch.util.Strings
 import javax.swing.*
 
 class EditorService(
+    private val appContext: AppContext,
     private val projectKey: String,
     private val activity: EditActivity,
 ) {
     val project: Stitch.StitchProject
-        get() = ProjectManager.getProject(projectKey)
+        get() = appContext.projectManager.getProject(projectKey)
 
-    private val scope = CoroutineScope(SupervisorJob() + App.dispatcherIO)
-
-    private val stitchService = StitchService(object : IStitchNative {
-        override fun computeOffset(
-            img0: Stitch.StitchInfo, img1: Stitch.StitchInfo,
-            fullTransform: Boolean, edgeEnhance: Boolean
-        ) = StitchNative.computeOffset(img0, img1, fullTransform, edgeEnhance)
-    })
+    private val scope = CoroutineScope(SupervisorJob() + appContext.dispatcherIO)
 
     fun stitch(fullTransform: Boolean, edgeEnhance: Boolean) {
         if (project.selected.isEmpty()) {
@@ -46,7 +36,7 @@ class EditorService(
                 project.updateUndo {
                     project.stitchInfo.reduceOrNull { acc, it ->
                         if (project.selected.contains(it.imageKey)) {
-                            val result = stitchService.combine(fullTransform, edgeEnhance, acc, it)
+                            val result = appContext.stitchService.combine(fullTransform, edgeEnhance, acc, it)
                             if (result != null) {
                                 it.dx = result.dx; it.dy = result.dy
                                 it.drot = result.drot; it.dscale = result.dscale
@@ -160,7 +150,7 @@ class EditorService(
                 JOptionPane.showMessageDialog(null, Strings.get("dialog.imageLoadFailed", file.name), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
                 return false
             }
-            val key = App.bitmapCache.saveBitmap(projectKey, bufferedImage)
+            val key = appContext.bitmapCache.saveBitmap(projectKey, bufferedImage)
             val info = Stitch.StitchInfo(key, bufferedImage.width, bufferedImage.height)
             project.updateUndo { project.stitchInfo.add(info); project.selected.add(info.imageKey) }
             activity.updateSelectInfo()

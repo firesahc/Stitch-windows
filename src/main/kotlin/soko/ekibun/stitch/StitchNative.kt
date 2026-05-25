@@ -7,10 +7,12 @@ import org.opencv.features2d.*
 import org.opencv.calib3d.Calib3d
 import java.awt.image.BufferedImage
 import java.util.concurrent.ConcurrentHashMap
+import soko.ekibun.stitch.interfaces.IBitmapCache
+import soko.ekibun.stitch.interfaces.IStitchNative
 
-object StitchNative {
+data class OffsetResult(val dx: Float, val dy: Float, val drot: Float, val dscale: Float)
 
-    data class OffsetResult(val dx: Float, val dy: Float, val drot: Float, val dscale: Float)
+class StitchNativeImpl(private val bitmapCache: IBitmapCache) : IStitchNative {
 
     /** Cache of Hanning windows keyed by Size to avoid recomputing identical windows. */
     private val hanningCache = ConcurrentHashMap<Size, Mat>()
@@ -26,7 +28,7 @@ object StitchNative {
         e.printStackTrace()
     }
 
-    fun computeOffset(img0: Stitch.StitchInfo, img1: Stitch.StitchInfo,
+    override fun computeOffset(img0: Stitch.StitchInfo, img1: Stitch.StitchInfo,
                       fullTransform: Boolean, edgeEnhance: Boolean): OffsetResult {
         return if (fullTransform) {
             val bmp0 = getClipBitmap(img0) ?: return OffsetResult(0f, 0f, 0f, 1f)
@@ -46,7 +48,7 @@ object StitchNative {
         val right = (info.xb * info.width).toInt()
         val bottom = (info.yb * info.height).toInt()
         if (left >= right || top >= bottom) return null
-        return App.bitmapCache.getBitmap(info.imageKey)?.let { img ->
+        return bitmapCache.getBitmap(info.imageKey)?.let { img ->
             if (left == 0 && right == info.width && top == 0 && bottom == info.height) img
             else {
                 val pw = right - left; val ph = bottom - top
@@ -63,7 +65,7 @@ object StitchNative {
         if (left >= right || top >= bottom) return null
         val w1 = (info1.xb * info1.width).toInt() - (info1.xa * info1.width).toInt()
         val h1 = (info1.yb * info1.height).toInt() - (info1.ya * info1.height).toInt()
-        return App.bitmapCache.getBitmap(info0.imageKey)?.let { img ->
+        return bitmapCache.getBitmap(info0.imageKey)?.let { img ->
             if (left == 0 && right == info0.width && top == 0 && bottom == info0.height
                 && info0.width == w1 && info0.height == h1) img
             else {

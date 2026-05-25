@@ -1,6 +1,6 @@
 package soko.ekibun.stitch.ui
 
-import soko.ekibun.stitch.ProjectManager
+import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.Strings
@@ -11,9 +11,9 @@ import javax.swing.*
 class EditActivity {
 
     companion object {
-        fun open(owner: JFrame, projectKey: String) {
+        fun open(appContext: AppContext, owner: JFrame, projectKey: String) {
             SwingUtilities.invokeLater {
-                val editor = EditActivity(projectKey)
+                val editor = EditActivity(appContext, projectKey)
                 editor.show()
             }
         }
@@ -27,6 +27,7 @@ class EditActivity {
         val labelRotate = "旋转"
     }
 
+    private val appContext: AppContext
     private val projectKey: String
     val project: Stitch.StitchProject
 
@@ -54,10 +55,11 @@ class EditActivity {
     )
     var selectIndex = labelDy
 
-    constructor(projectKey: String) {
+    constructor(appContext: AppContext, projectKey: String) {
+        this.appContext = appContext
         this.projectKey = projectKey
-        this.project = ProjectManager.getProject(projectKey)
-        this.editorService = EditorService(projectKey, this)
+        this.project = appContext.projectManager.getProject(projectKey)
+        this.editorService = EditorService(appContext, projectKey, this)
         this.selectPanel = EditorSelectPanel(
             project = project,
             onSwap = { editorService.swapSelected() },

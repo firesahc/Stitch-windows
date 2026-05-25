@@ -6,6 +6,7 @@ import java.io.File
 interface IProjectManager {
     fun getProject(projectKey: String): Stitch.StitchProject
     fun getProjects(): Array<File>
+    fun getProjectFile(projectKey: String): File
     fun newProject(): String
     fun clearProjects()
     fun deleteProject(projectKey: String)
