@@ -243,7 +243,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
     private fun onScroll(e: MouseWheelEvent) {
         if (e.isControlDown) {
             val oldScale = scale
-            scale = (scale * (1 + e.preciseWheelRotation / 4.0)).coerceIn(0.2, 5.0)
+            scale = (scale * (1 - e.preciseWheelRotation / 4.0)).coerceIn(0.2, 5.0)
             scrollX = e.x - (e.x - scrollX) * scale / oldScale
             scrollY = e.y - (e.y - scrollY) * scale / oldScale
             clampScroll()

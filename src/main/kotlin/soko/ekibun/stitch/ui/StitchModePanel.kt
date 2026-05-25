@@ -80,7 +80,8 @@ class StitchModePanel(
 
     private fun createAutoPanel() {
         radioTransformTrans = JRadioButton(Strings.get("edit.transformTrans"))
-        radioTransformFull = JRadioButton(Strings.get("edit.transformFull")).apply { isSelected = true }
+        radioTransformTrans = JRadioButton(Strings.get("edit.transformTrans")).apply { isSelected = true }
+        radioTransformFull = JRadioButton(Strings.get("edit.transformFull"))
         ButtonGroup().apply { add(radioTransformTrans); add(radioTransformFull) }
         checkEdgeEnhance = JCheckBox(Strings.get("edit.edgeEnhance"))
         val stitchBtn = JButton(Strings.get("edit.stitch")).apply {
