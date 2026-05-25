@@ -193,23 +193,4 @@ object Stitch {
         }
     }
 
-    fun combine(fullTransform: Boolean, edgeEnhance: Boolean, img0: StitchInfo, img1: StitchInfo): StitchInfo? {
-        return try {
-            val (dx, dy, drot, dscale) = StitchNative.computeOffset(img0, img1, fullTransform, edgeEnhance)
-            if ((dx != 0f || dy != 0f || drot != 0f || dscale != 1f) &&
-                abs(dx) < (img1.width + img0.width) / 2 &&
-                abs(dy) < (img1.height + img0.height) / 2
-            ) {
-                img1.clone().also {
-                    it.dx = dx
-                    it.dy = dy
-                    it.drot = drot
-                    it.dscale = dscale
-                }
-            } else null
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
 }

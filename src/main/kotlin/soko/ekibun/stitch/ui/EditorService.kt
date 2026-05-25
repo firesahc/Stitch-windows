@@ -4,6 +4,9 @@ import kotlinx.coroutines.*
 import soko.ekibun.stitch.App
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.StitchNative
+import soko.ekibun.stitch.interfaces.IStitchNative
+import soko.ekibun.stitch.service.StitchService
 import java.io.File
 import javax.imageio.ImageIO
 import soko.ekibun.stitch.util.Strings
@@ -17,6 +20,13 @@ class EditorService(
         get() = ProjectManager.getProject(projectKey)
 
     private val scope = CoroutineScope(SupervisorJob() + App.dispatcherIO)
+
+    private val stitchService = StitchService(object : IStitchNative {
+        override fun computeOffset(
+            img0: Stitch.StitchInfo, img1: Stitch.StitchInfo,
+            fullTransform: Boolean, edgeEnhance: Boolean
+        ) = StitchNative.computeOffset(img0, img1, fullTransform, edgeEnhance)
+    })
 
     fun stitch(fullTransform: Boolean, edgeEnhance: Boolean) {
         if (project.selected.isEmpty()) {
@@ -36,7 +46,7 @@ class EditorService(
                 project.updateUndo {
                     project.stitchInfo.reduceOrNull { acc, it ->
                         if (project.selected.contains(it.imageKey)) {
-                            val result = Stitch.combine(fullTransform, edgeEnhance, acc, it)
+                            val result = stitchService.combine(fullTransform, edgeEnhance, acc, it)
                             if (result != null) {
                                 it.dx = result.dx; it.dy = result.dy
                                 it.drot = result.drot; it.dscale = result.dscale
