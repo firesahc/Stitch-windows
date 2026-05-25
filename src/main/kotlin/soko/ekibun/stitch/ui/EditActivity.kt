@@ -55,6 +55,8 @@ class EditActivity : IEditorActivity {
         this.editorService = EditorService(appContext, projectKey, this as IEditorActivity)
         this.selectPanel = EditorSelectPanel(
             project = project,
+            stitchType = { stitchType },
+            selectIndex = { selectIndex },
             onSwap = { editorService.swapSelected() },
             onRemove = { editorService.removeSelected() },
             onSelectionChanged = { updateSelectInfo() }
@@ -69,6 +71,12 @@ class EditActivity : IEditorActivity {
         frame.setLocationRelativeTo(null)
 
         frame.setIconImage(GraphicsHelper.createAppIcon())
+
+        frame.addWindowListener(object : WindowAdapter() {
+            override fun windowClosed(e: WindowEvent) {
+                editorService.cancel()
+            }
+        })
 
         editView = EditorView(this)
         frame.add(editView, BorderLayout.CENTER)

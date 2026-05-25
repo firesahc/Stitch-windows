@@ -39,15 +39,18 @@ object GraphicsHelper {
     fun createAppIcon(): java.awt.image.BufferedImage {
         val icon = java.awt.image.BufferedImage(32, 32, java.awt.image.BufferedImage.TYPE_INT_ARGB)
         val g = icon.createGraphics()
-        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
-        g.color = PRIMARY_COLOR
-        g.fillRoundRect(2, 2, 28, 28, 8, 8)
-        g.color = java.awt.Color.WHITE
-        g.font = java.awt.Font("Microsoft YaHei", java.awt.Font.BOLD, 20)
-        val fm = g.fontMetrics
-        val sw = fm.stringWidth("S")
-        g.drawString("S", (32 - sw) / 2, 24)
-        g.dispose()
+        try {
+            g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON)
+            g.color = PRIMARY_COLOR
+            g.fillRoundRect(2, 2, 28, 28, 8, 8)
+            g.color = java.awt.Color.WHITE
+            g.font = java.awt.Font("Microsoft YaHei", java.awt.Font.BOLD, 20)
+            val fm = g.fontMetrics
+            val sw = fm.stringWidth("S")
+            g.drawString("S", (32 - sw) / 2, 24)
+        } finally {
+            g.dispose()
+        }
         return icon
     }
 }

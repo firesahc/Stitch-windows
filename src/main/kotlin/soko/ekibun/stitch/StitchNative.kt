@@ -72,8 +72,11 @@ class StitchNativeImpl(private val bitmapCache: IBitmapCache) : IStitchNative {
                 val pw = right - left; val ph = bottom - top
                 val canvas = BufferedImage(max(info0.width, w1), max(info0.height, h1), BufferedImage.TYPE_INT_ARGB)
                 val g = canvas.createGraphics()
-                g.drawImage(img, 0, 0, pw, ph, left, top, right, bottom, null)
-                g.dispose()
+                try {
+                    g.drawImage(img, 0, 0, pw, ph, left, top, right, bottom, null)
+                } finally {
+                    g.dispose()
+                }
                 canvas
             }
         }
