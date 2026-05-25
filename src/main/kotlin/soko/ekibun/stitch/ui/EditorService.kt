@@ -1,5 +1,6 @@
 package soko.ekibun.stitch.ui
 
+import kotlinx.coroutines.*
 import soko.ekibun.stitch.App
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
@@ -15,6 +16,8 @@ class EditorService(
     val project: Stitch.StitchProject
         get() = ProjectManager.getProject(projectKey)
 
+    private val scope = CoroutineScope(SupervisorJob() + App.dispatcherIO)
+
     fun stitch(fullTransform: Boolean, edgeEnhance: Boolean) {
         if (project.selected.isEmpty()) {
             JOptionPane.showMessageDialog(null, Strings.get("dialog.noSelection"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
@@ -27,7 +30,7 @@ class EditorService(
         activity.progressRow.isVisible = true
 
         val failedIndices = mutableListOf<Int>()
-        Thread {
+        scope.launch {
             synchronized(project) {
                 var done = 0
                 project.updateUndo {
@@ -62,7 +65,11 @@ class EditorService(
                         JOptionPane.WARNING_MESSAGE)
                 }
             }
-        }.apply { isDaemon = true }.start()
+        }
+    }
+
+    fun cancel() {
+        scope.cancel()
     }
 
     fun swapSelected() {

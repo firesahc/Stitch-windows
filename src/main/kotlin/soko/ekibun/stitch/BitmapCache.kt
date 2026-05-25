@@ -34,15 +34,8 @@ object BitmapCache {
         return null
     }
 
-    private var lastKey: String = ""
-
     fun saveBitmap(project: String, image: BufferedImage, saveToMemory: Boolean = true): String {
-        var key = project + File.separator + System.currentTimeMillis().toString(16)
-        if (lastKey == key) {
-            Thread.sleep(1)
-            return saveBitmap(project, image, saveToMemory)
-        }
-        lastKey = key
+        val key = project + File.separator + UUID.randomUUID().toString()
 
         if (saveToMemory) addToMemoryCache(key, image)
 

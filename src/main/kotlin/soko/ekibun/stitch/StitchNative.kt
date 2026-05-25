@@ -6,10 +6,20 @@ import org.opencv.imgproc.Imgproc
 import org.opencv.features2d.*
 import org.opencv.calib3d.Calib3d
 import java.awt.image.BufferedImage
+import java.util.concurrent.ConcurrentHashMap
 
 object StitchNative {
 
     data class OffsetResult(val dx: Float, val dy: Float, val drot: Float, val dscale: Float)
+
+    /** Cache of Hanning windows keyed by Size to avoid recomputing identical windows. */
+    private val hanningCache = ConcurrentHashMap<Size, Mat>()
+
+    /** Release all cached Hanning windows and clear the cache. */
+    fun clearHanningWindowCache() {
+        hanningCache.values.forEach { it.release() }
+        hanningCache.clear()
+    }
 
     private fun logError(e: Exception) {
         System.err.println("[StitchNative] ${e.message}")
@@ -84,8 +94,10 @@ object StitchNative {
         return mat
     }
 
-    /** Create a 2D Hanning window for suppressing FFT boundary artifacts. */
+    /** Create a 2D Hanning window for suppressing FFT boundary artifacts.
+     *  Results are cached by [Size] to avoid recomputing identical windows. */
     private fun createHanningWindow(size: Size): Mat {
+        hanningCache[size]?.let { return it.clone() }
         val cols = size.width.toInt()
         val rows = size.height.toInt()
         val rowWindow = Mat(rows, 1, CvType.CV_64F)
@@ -99,41 +111,55 @@ object StitchNative {
         // outer product: window = rowWindow * colWindow  (rows×1 × 1×cols = rows×cols)
         val window = Mat(rows, cols, CvType.CV_64F)
         Core.gemm(rowWindow, colWindow, 1.0, Mat(), 0.0, window)
-        return window
+        rowWindow.release()
+        colWindow.release()
+        hanningCache[size] = window
+        return window.clone()
     }
 
     private fun computeHomography(img0: BufferedImage, img1: BufferedImage, edgeEnhance: Boolean): OffsetResult? {
-        return try {
-            val mat0 = bufferedImageToMat(img0)
-            val mat1 = bufferedImageToMat(img1)
+        val mat0 = bufferedImageToMat(img0)
+        val mat1 = bufferedImageToMat(img1)
+        val gray0 = Mat()
+        val gray1 = Mat()
+        val keypoints0 = MatOfKeyPoint()
+        val keypoints1 = MatOfKeyPoint()
+        val desc0 = Mat()
+        val desc1 = Mat()
+        val srcMat = MatOfPoint2f()
+        val dstMat = MatOfPoint2f()
+        val homoMask = Mat()
+        val knnMatches = mutableListOf<MatOfDMatch>()
+        var kernel: Mat? = null
+        var float0: Mat? = null
+        var float1: Mat? = null
+        var extraProc0: Mat? = null
+        var extraProc1: Mat? = null
+        var homo: Mat? = null
 
-            val gray0 = Mat()
-            val gray1 = Mat()
+        return try {
             Imgproc.cvtColor(mat0, gray0, Imgproc.COLOR_RGBA2GRAY)
             Imgproc.cvtColor(mat1, gray1, Imgproc.COLOR_RGBA2GRAY)
 
-            val proc0: Mat
-            val proc1: Mat
-
             if (edgeEnhance) {
                 val kernelData = intArrayOf(1, 1, 1, 1, -8, 1, 1, 1, 1)
-                val kernel = Mat(3, 3, CvType.CV_32S)
+                kernel = Mat(3, 3, CvType.CV_32S)
                 kernel.put(0, 0, kernelData)
 
-                val float0 = Mat()
-                val float1 = Mat()
+                float0 = Mat()
+                float1 = Mat()
                 Imgproc.filter2D(gray0, float0, CvType.CV_32F, kernel)
                 Imgproc.filter2D(gray1, float1, CvType.CV_32F, kernel)
                 // Normalize Laplacian result to full 0-255 range as CV_8U for SIFT,
                 // preserving relative edge strength (convertScaleAbs would clip).
-                proc0 = Mat()
-                proc1 = Mat()
-                Core.normalize(float0, proc0, 0.0, 255.0, Core.NORM_MINMAX, CvType.CV_8U)
-                Core.normalize(float1, proc1, 0.0, 255.0, Core.NORM_MINMAX, CvType.CV_8U)
-            } else {
-                proc0 = gray0
-                proc1 = gray1
+                extraProc0 = Mat()
+                extraProc1 = Mat()
+                Core.normalize(float0, extraProc0, 0.0, 255.0, Core.NORM_MINMAX, CvType.CV_8U)
+                Core.normalize(float1, extraProc1, 0.0, 255.0, Core.NORM_MINMAX, CvType.CV_8U)
             }
+
+            val proc0 = extraProc0 ?: gray0
+            val proc1 = extraProc1 ?: gray1
 
             // Adaptive thresholds based on geometric mean of image resolution
             val geomRes = sqrt((img0.width * img0.height).toDouble())
@@ -141,10 +167,6 @@ object StitchNative {
             val ransacThreshold = max(3.0, geomRes / 400.0)
 
             val sift = SIFT.create()
-            val keypoints0 = MatOfKeyPoint()
-            val keypoints1 = MatOfKeyPoint()
-            val desc0 = Mat()
-            val desc1 = Mat()
             sift.detectAndCompute(proc0, Mat(), keypoints0, desc0)
             sift.detectAndCompute(proc1, Mat(), keypoints1, desc1)
 
@@ -153,7 +175,6 @@ object StitchNative {
             if (kp0.size < minKeypoints || kp1.size < minKeypoints) return null
 
             val matcher = FlannBasedMatcher.create()
-            val knnMatches = mutableListOf<MatOfDMatch>()
             matcher.knnMatch(desc0, desc1, knnMatches, 2)
 
             val goodMatches = mutableListOf<DMatch>()
@@ -173,13 +194,10 @@ object StitchNative {
                 dstPoints.add(kp1[match.trainIdx].pt)
             }
 
-            val srcMat = MatOfPoint2f()
-            val dstMat = MatOfPoint2f()
             srcMat.fromArray(*srcPoints.toTypedArray())
             dstMat.fromArray(*dstPoints.toTypedArray())
 
-            val homoMask = Mat()
-            val homo = Calib3d.findHomography(srcMat, dstMat, Calib3d.RHO, ransacThreshold, homoMask)
+            homo = Calib3d.findHomography(srcMat, dstMat, Calib3d.RHO, ransacThreshold, homoMask)
 
             val hData = DoubleArray(9)
             homo.get(0, 0, hData)
@@ -193,45 +211,65 @@ object StitchNative {
         } catch (e: Exception) {
             logError(e)
             null
+        } finally {
+            mat0.release()
+            mat1.release()
+            gray0.release()
+            gray1.release()
+            keypoints0.release()
+            keypoints1.release()
+            desc0.release()
+            desc1.release()
+            srcMat.release()
+            dstMat.release()
+            homoMask.release()
+            kernel?.release()
+            float0?.release()
+            float1?.release()
+            extraProc0?.release()
+            extraProc1?.release()
+            homo?.release()
+            for (m in knnMatches) m.release()
         }
     }
 
     private fun computePhaseCorrelate(img0: BufferedImage, img1: BufferedImage, edgeEnhance: Boolean): Pair<Float, Float> {
-        return try {
-            val mat0 = bufferedImageToMat(img0)
-            val mat1 = bufferedImageToMat(img1)
+        val mat0 = bufferedImageToMat(img0)
+        val mat1 = bufferedImageToMat(img1)
+        val gray0 = Mat()
+        val gray1 = Mat()
+        val f64_0 = Mat()
+        val f64_1 = Mat()
+        var kernel: Mat? = null
+        var extraProc0: Mat? = null
+        var extraProc1: Mat? = null
+        var window: Mat? = null
 
+        return try {
             if (mat0.size() != mat1.size()) return 0f to 0f
 
-            val gray0 = Mat()
-            val gray1 = Mat()
             Imgproc.cvtColor(mat0, gray0, Imgproc.COLOR_RGBA2GRAY)
             Imgproc.cvtColor(mat1, gray1, Imgproc.COLOR_RGBA2GRAY)
 
-            val f64_0 = Mat()
-            val f64_1 = Mat()
             gray0.convertTo(f64_0, CvType.CV_64F)
             gray1.convertTo(f64_1, CvType.CV_64F)
 
-            val proc0: Mat
-            val proc1: Mat
-
             if (edgeEnhance) {
                 val kernelData = intArrayOf(1, 1, 1, 1, -8, 1, 1, 1, 1)
-                val kernel = Mat(3, 3, CvType.CV_32S)
+                kernel = Mat(3, 3, CvType.CV_32S)
                 kernel.put(0, 0, kernelData)
 
-                proc0 = Mat()
-                proc1 = Mat()
-                Imgproc.filter2D(f64_0, proc0, CvType.CV_64F, kernel)
-                Imgproc.filter2D(f64_1, proc1, CvType.CV_64F, kernel)
-            } else {
-                proc0 = f64_0
-                proc1 = f64_1
+                extraProc0 = Mat()
+                extraProc1 = Mat()
+                Imgproc.filter2D(f64_0, extraProc0, CvType.CV_64F, kernel)
+                Imgproc.filter2D(f64_1, extraProc1, CvType.CV_64F, kernel)
             }
 
+            val proc0 = extraProc0 ?: f64_0
+            val proc1 = extraProc1 ?: f64_1
+
             // Hanning window suppresses FFT boundary artifacts from padding
-            val window = createHanningWindow(proc0.size())
+            window = createHanningWindow(proc0.size())
             Core.multiply(proc0, window, proc0)
             Core.multiply(proc1, window, proc1)
 
@@ -240,6 +278,17 @@ object StitchNative {
         } catch (e: Exception) {
             logError(e)
             0f to 0f
+        } finally {
+            mat0.release()
+            mat1.release()
+            gray0.release()
+            gray1.release()
+            f64_0.release()
+            f64_1.release()
+            kernel?.release()
+            extraProc0?.release()
+            extraProc1?.release()
+            window?.release()
         }
     }
 }
