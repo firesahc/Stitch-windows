@@ -15,7 +15,7 @@ class EditorService(
     val project: Stitch.StitchProject
         get() = ProjectManager.getProject(projectKey)
 
-    fun stitch(homo: Boolean, diff: Boolean) {
+    fun stitch(fullTransform: Boolean, edgeEnhance: Boolean) {
         if (project.selected.isEmpty()) {
             JOptionPane.showMessageDialog(null, Strings.get("dialog.noSelection"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
             return
@@ -26,15 +26,20 @@ class EditorService(
         activity.progressBar.maximum = total
         activity.progressRow.isVisible = true
 
+        val failedIndices = mutableListOf<Int>()
         Thread {
             synchronized(project) {
                 var done = 0
                 project.updateUndo {
                     project.stitchInfo.reduceOrNull { acc, it ->
                         if (project.selected.contains(it.imageKey)) {
-                            Stitch.combine(homo, diff, acc, it)?.let { data ->
-                                it.dx = data.dx; it.dy = data.dy
-                                it.drot = data.drot; it.dscale = data.dscale
+                            val result = Stitch.combine(fullTransform, edgeEnhance, acc, it)
+                            if (result != null) {
+                                it.dx = result.dx; it.dy = result.dy
+                                it.drot = result.drot; it.dscale = result.dscale
+                            } else {
+                                val idx = project.stitchInfo.indexOf(it)
+                                if (idx >= 0) failedIndices.add(idx)
                             }
                             done++
                             val finalDone = done
@@ -50,6 +55,12 @@ class EditorService(
             SwingUtilities.invokeLater {
                 activity.progressRow.isVisible = false
                 activity.updateSelectInfo()
+                if (failedIndices.isNotEmpty()) {
+                    val msg = "以下 ${failedIndices.size} 张图片拼接失败（编号从 0 开始）：\n" +
+                            failedIndices.joinToString(", ")
+                    JOptionPane.showMessageDialog(null, msg, "拼接失败",
+                        JOptionPane.WARNING_MESSAGE)
+                }
             }
         }.apply { isDaemon = true }.start()
     }

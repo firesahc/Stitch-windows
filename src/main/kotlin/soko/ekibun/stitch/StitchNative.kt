@@ -17,15 +17,15 @@ object StitchNative {
     }
 
     fun computeOffset(img0: Stitch.StitchInfo, img1: Stitch.StitchInfo,
-                      homo: Boolean, diff: Boolean): OffsetResult {
-        return if (homo) {
+                      fullTransform: Boolean, edgeEnhance: Boolean): OffsetResult {
+        return if (fullTransform) {
             val bmp0 = getClipBitmap(img0) ?: return OffsetResult(0f, 0f, 0f, 1f)
             val bmp1 = getClipBitmap(img1) ?: return OffsetResult(0f, 0f, 0f, 1f)
-            computeHomography(bmp0, bmp1, diff) ?: OffsetResult(0f, 0f, 0f, 1f)
+            computeHomography(bmp0, bmp1, edgeEnhance) ?: OffsetResult(0f, 0f, 0f, 1f)
         } else {
             val bmp0 = getClipBitmap(img0, img1) ?: return OffsetResult(0f, 0f, 0f, 1f)
             val bmp1 = getClipBitmap(img1, img0) ?: return OffsetResult(0f, 0f, 0f, 1f)
-            val (dx, dy) = computePhaseCorrelate(bmp0, bmp1, diff)
+            val (dx, dy) = computePhaseCorrelate(bmp0, bmp1, edgeEnhance)
             OffsetResult(dx, dy, 0f, 1f)
         }
     }
@@ -84,7 +84,25 @@ object StitchNative {
         return mat
     }
 
-    private fun computeHomography(img0: BufferedImage, img1: BufferedImage, diff: Boolean): OffsetResult? {
+    /** Create a 2D Hanning window for suppressing FFT boundary artifacts. */
+    private fun createHanningWindow(size: Size): Mat {
+        val cols = size.width.toInt()
+        val rows = size.height.toInt()
+        val rowWindow = Mat(rows, 1, CvType.CV_64F)
+        val colWindow = Mat(1, cols, CvType.CV_64F)
+        for (i in 0 until rows) {
+            rowWindow.put(i, 0, 0.5 * (1.0 - cos(2.0 * PI * i / (rows - 1))))
+        }
+        for (j in 0 until cols) {
+            colWindow.put(0, j, 0.5 * (1.0 - cos(2.0 * PI * j / (cols - 1))))
+        }
+        // outer product: window = rowWindow * colWindow  (rows×1 × 1×cols = rows×cols)
+        val window = Mat(rows, cols, CvType.CV_64F)
+        Core.gemm(rowWindow, colWindow, 1.0, Mat(), 0.0, window)
+        return window
+    }
+
+    private fun computeHomography(img0: BufferedImage, img1: BufferedImage, edgeEnhance: Boolean): OffsetResult? {
         return try {
             val mat0 = bufferedImageToMat(img0)
             val mat1 = bufferedImageToMat(img1)
@@ -97,30 +115,24 @@ object StitchNative {
             val proc0: Mat
             val proc1: Mat
 
-            if (diff && mat0.size() == mat1.size()) {
+            if (edgeEnhance) {
                 val kernelData = intArrayOf(1, 1, 1, 1, -8, 1, 1, 1, 1)
                 val kernel = Mat(3, 3, CvType.CV_32S)
                 kernel.put(0, 0, kernelData)
 
-                val lap0 = Mat()
-                val lap1 = Mat()
-                Imgproc.filter2D(gray0, lap0, CvType.CV_32F, kernel)
-                Imgproc.filter2D(gray1, lap1, CvType.CV_32F, kernel)
-
-                val diffMat = Mat()
-                Core.absdiff(lap0, lap1, diffMat)
-
-                val mask = Mat()
-                Core.compare(diffMat, Scalar(0.0), mask, Core.CMP_GT)
-
                 proc0 = Mat()
                 proc1 = Mat()
-                lap0.copyTo(proc0, mask)
-                lap1.copyTo(proc1, mask)
+                Imgproc.filter2D(gray0, proc0, CvType.CV_32F, kernel)
+                Imgproc.filter2D(gray1, proc1, CvType.CV_32F, kernel)
             } else {
                 proc0 = gray0
                 proc1 = gray1
             }
+
+            // Adaptive thresholds based on geometric mean of image resolution
+            val geomRes = sqrt((img0.width * img0.height).toDouble())
+            val minKeypoints = max(8, (geomRes / 200.0).toInt())
+            val ransacThreshold = max(3.0, geomRes / 400.0)
 
             val sift = SIFT.create()
             val keypoints0 = MatOfKeyPoint()
@@ -132,7 +144,7 @@ object StitchNative {
 
             val kp0 = keypoints0.toArray()
             val kp1 = keypoints1.toArray()
-            if (kp0.size < 10 || kp1.size < 10) return null
+            if (kp0.size < minKeypoints || kp1.size < minKeypoints) return null
 
             val matcher = FlannBasedMatcher.create()
             val knnMatches = mutableListOf<MatOfDMatch>()
@@ -146,7 +158,7 @@ object StitchNative {
                 }
             }
 
-            if (goodMatches.size < 10) return null
+            if (goodMatches.size < minKeypoints) return null
 
             val srcPoints = mutableListOf<Point>()
             val dstPoints = mutableListOf<Point>()
@@ -161,7 +173,7 @@ object StitchNative {
             dstMat.fromArray(*dstPoints.toTypedArray())
 
             val homoMask = Mat()
-            val homo = Calib3d.findHomography(srcMat, dstMat, Calib3d.RHO, 5.0, homoMask)
+            val homo = Calib3d.findHomography(srcMat, dstMat, Calib3d.RHO, ransacThreshold, homoMask)
 
             val hData = DoubleArray(9)
             homo.get(0, 0, hData)
@@ -178,7 +190,7 @@ object StitchNative {
         }
     }
 
-    private fun computePhaseCorrelate(img0: BufferedImage, img1: BufferedImage, diff: Boolean): Pair<Float, Float> {
+    private fun computePhaseCorrelate(img0: BufferedImage, img1: BufferedImage, edgeEnhance: Boolean): Pair<Float, Float> {
         return try {
             val mat0 = bufferedImageToMat(img0)
             val mat1 = bufferedImageToMat(img1)
@@ -198,30 +210,24 @@ object StitchNative {
             val proc0: Mat
             val proc1: Mat
 
-            if (diff) {
+            if (edgeEnhance) {
                 val kernelData = intArrayOf(1, 1, 1, 1, -8, 1, 1, 1, 1)
                 val kernel = Mat(3, 3, CvType.CV_32S)
                 kernel.put(0, 0, kernelData)
 
-                val lap0 = Mat()
-                val lap1 = Mat()
-                Imgproc.filter2D(f64_0, lap0, CvType.CV_64F, kernel)
-                Imgproc.filter2D(f64_1, lap1, CvType.CV_64F, kernel)
-
-                val diffMat = Mat()
-                Core.absdiff(lap0, lap1, diffMat)
-
-                val mask = Mat()
-                Core.compare(diffMat, Scalar(0.0), mask, Core.CMP_GT)
-
                 proc0 = Mat()
                 proc1 = Mat()
-                lap0.copyTo(proc0, mask)
-                lap1.copyTo(proc1, mask)
+                Imgproc.filter2D(f64_0, proc0, CvType.CV_64F, kernel)
+                Imgproc.filter2D(f64_1, proc1, CvType.CV_64F, kernel)
             } else {
                 proc0 = f64_0
                 proc1 = f64_1
             }
+
+            // Hanning window suppresses FFT boundary artifacts from padding
+            val window = createHanningWindow(proc0.size())
+            Core.multiply(proc0, window, proc0)
+            Core.multiply(proc1, window, proc1)
 
             val shift = Imgproc.phaseCorrelate(proc1, proc0)
             shift.x.toFloat() to shift.y.toFloat()
