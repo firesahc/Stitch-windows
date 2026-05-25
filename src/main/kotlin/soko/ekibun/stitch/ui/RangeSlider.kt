@@ -27,6 +27,8 @@ class RangeSlider : JComponent() {
 
     var onRangeChange: ((Float, Float) -> Unit)? = null
     var onTouchUp: (() -> Unit)? = null
+    /** 拖拽 handle B 时是否限制其不能小于 handle A（平铺模式设为 false） */
+    var constrainHandles = true
 
     private val primaryColor = soko.ekibun.stitch.util.PRIMARY_COLOR
     private val opaqueColor = Color(136, 136, 136, 136)
@@ -71,7 +73,7 @@ class RangeSlider : JComponent() {
                             b = a
                         }
                     }
-                    2 -> b = max(a, newValue.toFloat())
+                    2 -> b = if (constrainHandles) max(a, newValue.toFloat()) else newValue.toFloat()
                 }
                 onRangeChange?.invoke(a, b)
                 repaint()
