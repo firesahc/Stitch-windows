@@ -35,13 +35,13 @@ class EditorService(
                 var done = 0
                 project.updateUndo {
                     project.stitchInfo.reduceOrNull { acc, it ->
-                        if (project.selected.contains(it.imageKey)) {
+                        if (project.isSelected(it.imageKey)) {
                             val result = appContext.stitchService.combine(fullTransform, edgeEnhance, acc, it)
                             if (result != null) {
                                 it.dx = result.dx; it.dy = result.dy
                                 it.drot = result.drot; it.dscale = result.dscale
                             } else {
-                                val idx = project.stitchInfo.indexOf(it)
+                                val idx = project.indexOfInfo(it.imageKey)
                                 if (idx >= 0) failedIndices.add(idx)
                             }
                             done++
@@ -79,16 +79,12 @@ class EditorService(
         }
         project.updateUndo {
             val selected = project.selected.toList()
-            val i = selected.last().let {
-                project.stitchInfo.indexOfFirst { info -> info.imageKey == it }
-            }
+            val i = project.indexOfInfo(selected.last())
             if (i < 0) return@updateUndo
-            var a = project.stitchInfo[i]
+            var a = project.getStitchInfo(i)!!
             val adx = a.dx; val ady = a.dy; val adr = a.drot; val ads = a.dscale
             for (indic in 0 until selected.size - 1) {
-                val j = selected[indic].let {
-                    project.stitchInfo.indexOfFirst { info -> info.imageKey == it }
-                }
+                val j = project.indexOfInfo(selected[indic])
                 if (j < 0) return@updateUndo
                 val b = project.stitchInfo.set(j, a)
                 a.dx = b.dx; a.dy = b.dy; a.drot = b.drot; a.dscale = b.dscale
@@ -110,7 +106,7 @@ class EditorService(
             Strings.get("dialog.confirmTitle"), JOptionPane.OK_CANCEL_OPTION)
         if (result == JOptionPane.OK_OPTION) {
             project.updateUndo {
-                project.stitchInfo.removeAll { project.selected.contains(it.imageKey) }
+                project.stitchInfo.removeAll { project.isSelected(it.imageKey) }
                 project.selected.clear()
             }
             activity.updateSelectInfo()
@@ -161,6 +157,74 @@ class EditorService(
         }
     }
 
+    companion object {
+    private val numberHandlers = mapOf(
+        EditActivity.labelDx to NumberLabelHandler.Dx,
+        EditActivity.labelDy to NumberLabelHandler.Dy,
+        EditActivity.labelTrim to NumberLabelHandler.Trim,
+        EditActivity.labelXrange to NumberLabelHandler.Xrange,
+        EditActivity.labelYrange to NumberLabelHandler.Yrange,
+        EditActivity.labelScale to NumberLabelHandler.Scale,
+        EditActivity.labelRotate to NumberLabelHandler.Rotate,
+    )
+
+    sealed class NumberLabelHandler {
+        abstract fun apply(
+            info: Stitch.StitchInfo,
+            a: Float?,
+            b: Float?,
+            relative: Boolean,
+            width: Int,
+            height: Int
+        )
+
+        object Dx : NumberLabelHandler() {
+            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                if (a != null) info.dx = if (relative) (a * 2 - 1) * width else a
+            }
+        }
+
+        object Dy : NumberLabelHandler() {
+            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                if (a != null) info.dy = if (relative) (a * 2 - 1) * height else a
+            }
+        }
+
+        object Trim : NumberLabelHandler() {
+            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                if (a != null) info.a = a
+                if (b != null) info.b = b
+            }
+        }
+
+        object Xrange : NumberLabelHandler() {
+            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                if (a != null) info.xa = if (!relative && width > 0) a / width else a
+                if (b != null) info.xb = if (!relative && width > 0) b / width else b
+            }
+        }
+
+        object Yrange : NumberLabelHandler() {
+            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                if (a != null) info.ya = if (!relative && height > 0) a / height else a
+                if (b != null) info.yb = if (!relative && height > 0) b / height else b
+            }
+        }
+
+        object Scale : NumberLabelHandler() {
+            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                if (a != null) info.dscale = if (relative) (a * 2) else a
+            }
+        }
+
+        object Rotate : NumberLabelHandler() {
+            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                if (a != null) info.drot = if (relative) (a * 2 - 1) * 180 else a
+            }
+        }
+    }
+}
+
     fun setNumber(a: Float? = null, b: Float? = null, relative: Boolean = false) {
         val selected = activity.selectPanel.selectedStitchInfo
         if (selected.isNotEmpty()) selected.forEach {
@@ -175,20 +239,8 @@ class EditorService(
                 } else {
                     it.dy = (bb - aa) * it.height; it.dx = 0f
                 }
-            } else when (activity.selectIndex) {
-                EditActivity.labelDx -> if (a != null) it.dx = if (relative) (a * 2 - 1) * it.width else a
-                EditActivity.labelDy -> if (a != null) it.dy = if (relative) (a * 2 - 1) * it.height else a
-                EditActivity.labelTrim -> { if (a != null) it.a = a; if (b != null) it.b = b }
-                EditActivity.labelXrange -> {
-                    if (a != null) it.xa = if (!relative && it.width > 0) a / it.width else a
-                    if (b != null) it.xb = if (!relative && it.width > 0) b / it.width else b
-                }
-                EditActivity.labelYrange -> {
-                    if (a != null) it.ya = if (!relative && it.height > 0) a / it.height else a
-                    if (b != null) it.yb = if (!relative && it.height > 0) b / it.height else b
-                }
-                EditActivity.labelScale -> if (a != null) it.dscale = if (relative) (a * 2) else a
-                EditActivity.labelRotate -> if (a != null) it.drot = if (relative) (a * 2 - 1) * 180 else a
+            } else {
+                numberHandlers[activity.selectIndex]?.apply(it, a, b, relative, it.width, it.height)
             }
         }
     }

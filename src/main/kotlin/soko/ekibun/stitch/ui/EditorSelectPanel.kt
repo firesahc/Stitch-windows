@@ -22,9 +22,9 @@ class EditorSelectPanel(
         get() = when {
             stitchType == EditActivity.StitchType.MAN && selectIndex in listOf(EditActivity.labelDx, EditActivity.labelDy, EditActivity.labelTrim) ->
                 project.stitchInfo.filterIndexed { i, v ->
-                    i > 0 && project.selected.contains(v.imageKey)
+                    i > 0 && project.isSelected(v.imageKey)
                 }
-            else -> project.stitchInfo.filter { project.selected.contains(it.imageKey) }
+            else -> project.getSelectedInfos()
         }
 
     fun createSelectRow(): JPanel {

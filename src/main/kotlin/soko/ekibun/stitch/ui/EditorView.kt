@@ -27,6 +27,10 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
     private var downOffsetY = 0.0
     private var dragDirty = false
 
+    private var offscreenBuffer: java.awt.image.BufferedImage? = null
+
+    fun invalidateBuffer() { offscreenBuffer = null }
+
     private val colorPrimary = soko.ekibun.stitch.util.PRIMARY_COLOR
     private val colorUnselected = Color(136, 136, 136, 136)
 
@@ -53,6 +57,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
     val project: Stitch.StitchProject? get() = editActivity.project
 
     fun update() {
+        invalidateBuffer()
         bound = project?.updateInfo() ?: Rect(0f, 0f, 0f, 0f)
         if (!initScrollDone && width > 0 && height > 0) {
             initScrollDone = true
@@ -92,7 +97,10 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
 
         // Render to transparent offscreen buffer so DST_OVER compositing works correctly
         // (the panel's white opaque background would block DST_OVER)
-        val buffer = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        if (offscreenBuffer == null || offscreenBuffer!!.width != w || offscreenBuffer!!.height != h) {
+            offscreenBuffer = java.awt.image.BufferedImage(maxOf(1, w), maxOf(1, h), java.awt.image.BufferedImage.TYPE_INT_ARGB)
+        }
+        val buffer = offscreenBuffer!!
         val bg = buffer.createGraphics()
         try {
             bg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
@@ -113,7 +121,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
 
             project?.stitchInfo?.let { infoList ->
                 infoList.firstOrNull()?.let { info ->
-                    val sel = project!!.selected.contains(info.imageKey)
+                    val sel = project!!.isSelected(info.imageKey)
                     bg.color = if (sel) colorPrimary else colorUnselected
                     bg.fillOval((info.cx - radius).toInt(), (info.cy - radius).toInt(), (radius * 2).toInt(), (radius * 2).toInt())
                     bg.color = Color.WHITE
@@ -124,7 +132,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
                 }
 
                 infoList.reduceIndexedOrNull { i, acc, info ->
-                    val sel = project!!.selected.contains(info.imageKey)
+                    val sel = project!!.isSelected(info.imageKey)
                     bg.color = if (sel) colorPrimary else colorUnselected
                     bg.fillOval((info.cx - radius).toInt(), (info.cy - radius).toInt(), (radius * 2).toInt(), (radius * 2).toInt())
 

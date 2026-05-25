@@ -158,6 +158,18 @@ object Stitch {
                 bitmapCache = appContext.bitmapCache,
             )
         }
+
+        /** Facade: check if an image key is selected */
+        fun isSelected(imageKey: String): Boolean = selected.contains(imageKey)
+
+        /** Facade: find index of a stitch info by image key */
+        fun indexOfInfo(imageKey: String): Int = stitchInfo.indexOfFirst { it?.imageKey == imageKey }
+
+        /** Facade: get stitch info at index (null-safe) */
+        fun getStitchInfo(index: Int): StitchInfo? = stitchInfo.getOrNull(index)
+
+        /** Facade: get all selected stitch infos */
+        fun getSelectedInfos(): List<StitchInfo> = stitchInfo.filter { it != null && selected.contains(it.imageKey) }
     }
 
     data class StitchInfo(

@@ -182,52 +182,133 @@ class StitchModePanel(
         if (selectedStitchInfo.isNotEmpty()) {
             seekbar.isEnabled = true
             seekbar.constrainHandles = stitchType != EditActivity.StitchType.TILE
-            when {
-                stitchType == EditActivity.StitchType.TILE -> {
-                    seekbar.type = RangeSlider.TYPE_RANGE
-                    if (switchHorizonSelected) {
-                        seekbar.a = selectedStitchInfo.map { (1 - it.dx / it.width) * it.a }.average().toFloat()
-                        seekbar.b = selectedStitchInfo.map { it.a + (1 - it.a) * (it.dx / it.width) }.average().toFloat()
-                    } else {
-                        seekbar.a = selectedStitchInfo.map { (1 - it.dy / it.height) * it.a }.average().toFloat()
-                        seekbar.b = selectedStitchInfo.map { it.a + (1 - it.a) * (it.dy / it.height) }.average().toFloat()
-                    }
-                }
-                selectIndex == EditActivity.labelDx -> {
-                    seekbar.type = RangeSlider.TYPE_CENTER
-                    seekbar.a = selectedStitchInfo.map { (it.dx / it.width + 1) / 2 }.average().toFloat()
-                }
-                selectIndex == EditActivity.labelDy -> {
-                    seekbar.type = RangeSlider.TYPE_CENTER
-                    seekbar.a = selectedStitchInfo.map { (it.dy / it.height + 1) / 2 }.average().toFloat()
-                }
-                selectIndex == EditActivity.labelTrim -> {
-                    seekbar.type = RangeSlider.TYPE_GRADIENT
-                    seekbar.a = selectedStitchInfo.map { it.a }.average().toFloat()
-                    seekbar.b = selectedStitchInfo.map { it.b }.average().toFloat()
-                }
-                selectIndex == EditActivity.labelXrange -> {
-                    seekbar.type = RangeSlider.TYPE_RANGE
-                    seekbar.a = selectedStitchInfo.map { it.xa }.average().toFloat()
-                    seekbar.b = selectedStitchInfo.map { it.xb }.average().toFloat()
-                }
-                selectIndex == EditActivity.labelYrange -> {
-                    seekbar.type = RangeSlider.TYPE_RANGE
-                    seekbar.a = selectedStitchInfo.map { it.ya }.average().toFloat()
-                    seekbar.b = selectedStitchInfo.map { it.yb }.average().toFloat()
-                }
-                selectIndex == EditActivity.labelScale -> {
-                    seekbar.type = RangeSlider.TYPE_CENTER
-                    seekbar.a = selectedStitchInfo.map { it.dscale / 2f }.average().toFloat()
-                }
-                selectIndex == EditActivity.labelRotate -> {
-                    seekbar.type = RangeSlider.TYPE_CENTER
-                    seekbar.a = selectedStitchInfo.map { (it.drot / 360) + 0.5f }.average().toFloat()
-                }
+            if (stitchType == EditActivity.StitchType.TILE) {
+                TileSeekbarHandler.updateSeekbar(seekbar, selectedStitchInfo, switchHorizonSelected)
+            } else {
+                seekbarHandlers[selectIndex]?.updateSeekbar(seekbar, selectedStitchInfo)
             }
             seekbar.repaint()
         } else {
             seekbar.isEnabled = false
         }
+    }
+
+    // ---- SeekbarHandler sealed hierarchy (replaces when-chain) ----
+
+    companion object {
+        private val seekbarHandlers: Map<String, SeekbarHandler> = mapOf(
+            EditActivity.labelDx to DxSeekbarHandler,
+            EditActivity.labelDy to DySeekbarHandler,
+            EditActivity.labelTrim to TrimSeekbarHandler,
+            EditActivity.labelXrange to XrangeSeekbarHandler,
+            EditActivity.labelYrange to YrangeSeekbarHandler,
+            EditActivity.labelScale to ScaleSeekbarHandler,
+            EditActivity.labelRotate to RotateSeekbarHandler
+        )
+    }
+}
+
+private sealed class SeekbarHandler {
+    abstract fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean = false
+    )
+}
+
+private object TileSeekbarHandler : SeekbarHandler() {
+    override fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean
+    ) {
+        seekbar.type = RangeSlider.TYPE_RANGE
+        if (switchHorizonSelected) {
+            seekbar.a = selectedStitchInfo.map { (1 - it.dx / it.width) * it.a }.average().toFloat()
+            seekbar.b = selectedStitchInfo.map { it.a + (1 - it.a) * (it.dx / it.width) }.average().toFloat()
+        } else {
+            seekbar.a = selectedStitchInfo.map { (1 - it.dy / it.height) * it.a }.average().toFloat()
+            seekbar.b = selectedStitchInfo.map { it.a + (1 - it.a) * (it.dy / it.height) }.average().toFloat()
+        }
+    }
+}
+
+private object DxSeekbarHandler : SeekbarHandler() {
+    override fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean
+    ) {
+        seekbar.type = RangeSlider.TYPE_CENTER
+        seekbar.a = selectedStitchInfo.map { (it.dx / it.width + 1) / 2 }.average().toFloat()
+    }
+}
+
+private object DySeekbarHandler : SeekbarHandler() {
+    override fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean
+    ) {
+        seekbar.type = RangeSlider.TYPE_CENTER
+        seekbar.a = selectedStitchInfo.map { (it.dy / it.height + 1) / 2 }.average().toFloat()
+    }
+}
+
+private object TrimSeekbarHandler : SeekbarHandler() {
+    override fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean
+    ) {
+        seekbar.type = RangeSlider.TYPE_GRADIENT
+        seekbar.a = selectedStitchInfo.map { it.a }.average().toFloat()
+        seekbar.b = selectedStitchInfo.map { it.b }.average().toFloat()
+    }
+}
+
+private object XrangeSeekbarHandler : SeekbarHandler() {
+    override fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean
+    ) {
+        seekbar.type = RangeSlider.TYPE_RANGE
+        seekbar.a = selectedStitchInfo.map { it.xa }.average().toFloat()
+        seekbar.b = selectedStitchInfo.map { it.xb }.average().toFloat()
+    }
+}
+
+private object YrangeSeekbarHandler : SeekbarHandler() {
+    override fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean
+    ) {
+        seekbar.type = RangeSlider.TYPE_RANGE
+        seekbar.a = selectedStitchInfo.map { it.ya }.average().toFloat()
+        seekbar.b = selectedStitchInfo.map { it.yb }.average().toFloat()
+    }
+}
+
+private object ScaleSeekbarHandler : SeekbarHandler() {
+    override fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean
+    ) {
+        seekbar.type = RangeSlider.TYPE_CENTER
+        seekbar.a = selectedStitchInfo.map { it.dscale / 2f }.average().toFloat()
+    }
+}
+
+private object RotateSeekbarHandler : SeekbarHandler() {
+    override fun updateSeekbar(
+        seekbar: RangeSlider,
+        selectedStitchInfo: List<Stitch.StitchInfo>,
+        switchHorizonSelected: Boolean
+    ) {
+        seekbar.type = RangeSlider.TYPE_CENTER
+        seekbar.a = selectedStitchInfo.map { (it.drot / 360) + 0.5f }.average().toFloat()
     }
 }
