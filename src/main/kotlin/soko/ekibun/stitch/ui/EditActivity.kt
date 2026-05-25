@@ -46,7 +46,7 @@ class EditActivity : IEditorActivity {
         IEditorActivity.labelScale to (2 to false),
         IEditorActivity.labelRotate to (0 to false)
     )
-    override var selectIndex = IEditorActivity.labelDy
+    override var selectIndex = IEditorActivity.labelDx
 
     constructor(appContext: AppContext, projectKey: String) {
         this.appContext = appContext

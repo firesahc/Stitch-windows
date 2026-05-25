@@ -32,7 +32,7 @@ class StitchModePanel(
     var stitchType: StitchType = StitchType.AUTO
 
     /** Current select index – updated externally by EditActivity */
-    var selectIndex: String = IEditorActivity.labelDy
+    var selectIndex: String = IEditorActivity.labelDx
 
     // ---- Exposed components ----
 

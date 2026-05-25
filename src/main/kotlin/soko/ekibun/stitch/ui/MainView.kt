@@ -37,6 +37,7 @@ class MainView(private val appContext: AppContext) : JFrame() {
         // Project list
         projectList.model = defaultListModel
         projectList.cellRenderer = ProjectListRenderer()
+        projectList.fixedCellHeight = 40
         val popupMenu = JPopupMenu()
         val deleteItem = JMenuItem(Strings.get("main.deleteProject")).apply {
             addActionListener {
@@ -203,6 +204,7 @@ class MainView(private val appContext: AppContext) : JFrame() {
             if (value is File) {
                 text = formatProjectName(value)
             }
+            border = BorderFactory.createEmptyBorder(8, 12, 8, 12)
             return comp
         }
     }
