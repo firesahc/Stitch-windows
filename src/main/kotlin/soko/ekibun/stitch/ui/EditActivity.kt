@@ -55,6 +55,10 @@ class EditActivity {
     lateinit var progressLabel: JLabel
     private var suppressNumberListener = false
 
+    private lateinit var radioTransformTrans: JRadioButton
+    private lateinit var radioTransformFull: JRadioButton
+    private lateinit var checkEdgeEnhance: JCheckBox
+
     enum class StitchType(val label: String) {
         AUTO("自动"), TILE("平铺"), MAN("手动")
     }
@@ -116,9 +120,11 @@ class EditActivity {
             override fun actionPerformed(e: java.awt.event.ActionEvent) { editorService.saveImage() }
         })
         rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, Toolkit.getDefaultToolkit().menuShortcutKeyMask), "stitch")
-        rootPane.actionMap.put("stitch", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) { editorService.stitch(true, true) }
-        })
+rootPane.actionMap.put("stitch", object : AbstractAction() {
+    override fun actionPerformed(e: java.awt.event.ActionEvent) {
+        editorService.stitch(radioTransformFull.isSelected, checkEdgeEnhance.isSelected)
+    }
+})
         rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete")
         rootPane.actionMap.put("delete", object : AbstractAction() {
             override fun actionPerformed(e: java.awt.event.ActionEvent) { editorService.removeSelected() }
@@ -199,15 +205,17 @@ class EditActivity {
     }
 
     private fun createAutoPanel(): JPanel {
-        val diffCb = JCheckBox(Strings.get("edit.diffMode")).apply { isSelected = true }
-        val homoCb = JCheckBox(Strings.get("edit.featureMatch"))
+        radioTransformTrans = JRadioButton(Strings.get("edit.transformTrans"))
+        radioTransformFull = JRadioButton(Strings.get("edit.transformFull")).apply { isSelected = true }
+        ButtonGroup().apply { add(radioTransformTrans); add(radioTransformFull) }
+        checkEdgeEnhance = JCheckBox(Strings.get("edit.edgeEnhance"))
         val stitchBtn = JButton(Strings.get("edit.stitch")).apply {
             foreground = Color.WHITE
             background = PRIMARY_COLOR
-            addActionListener { editorService.stitch(homoCb.isSelected, diffCb.isSelected) }
+            addActionListener { editorService.stitch(radioTransformFull.isSelected, checkEdgeEnhance.isSelected) }
         }
         panelAuto = JPanel(FlowLayout(FlowLayout.LEFT, 10, 5)).apply {
-            add(diffCb); add(homoCb); add(stitchBtn)
+            add(radioTransformTrans); add(radioTransformFull); add(checkEdgeEnhance); add(stitchBtn)
         }
         return panelAuto
     }
