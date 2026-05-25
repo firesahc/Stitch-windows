@@ -120,10 +120,16 @@ object StitchNative {
                 val kernel = Mat(3, 3, CvType.CV_32S)
                 kernel.put(0, 0, kernelData)
 
+                val float0 = Mat()
+                val float1 = Mat()
+                Imgproc.filter2D(gray0, float0, CvType.CV_32F, kernel)
+                Imgproc.filter2D(gray1, float1, CvType.CV_32F, kernel)
+                // Normalize Laplacian result to full 0-255 range as CV_8U for SIFT,
+                // preserving relative edge strength (convertScaleAbs would clip).
                 proc0 = Mat()
                 proc1 = Mat()
-                Imgproc.filter2D(gray0, proc0, CvType.CV_32F, kernel)
-                Imgproc.filter2D(gray1, proc1, CvType.CV_32F, kernel)
+                Core.normalize(float0, proc0, 0.0, 255.0, Core.NORM_MINMAX, CvType.CV_8U)
+                Core.normalize(float1, proc1, 0.0, 255.0, Core.NORM_MINMAX, CvType.CV_8U)
             } else {
                 proc0 = gray0
                 proc1 = gray1
