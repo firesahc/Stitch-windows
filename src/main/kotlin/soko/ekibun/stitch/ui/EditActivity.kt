@@ -3,13 +3,10 @@ package soko.ekibun.stitch.ui
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.util.GraphicsHelper
-import soko.ekibun.stitch.util.PRIMARY_COLOR
 import soko.ekibun.stitch.util.Strings
 import java.awt.*
 import java.awt.event.*
 import javax.swing.*
-import javax.swing.event.DocumentEvent
-import javax.swing.event.DocumentListener
 
 class EditActivity {
 
@@ -34,32 +31,11 @@ class EditActivity {
     val project: Stitch.StitchProject
 
     private lateinit var editorService: EditorService
+    val selectPanel: EditorSelectPanel
 
     lateinit var editView: EditorView
-    private lateinit var selectInfo: JLabel
-    lateinit var seekbar: RangeSlider
-    private lateinit var numberView: JPanel
-    private lateinit var numberA: JTextField
-    private lateinit var numberB: JTextField
-    private lateinit var numberDiv: JLabel
-    private lateinit var numberDec: JButton
-    private lateinit var numberInc: JButton
-    private lateinit var dropdown: JComboBox<String>
-    private lateinit var panelAuto: JPanel
-    private lateinit var panelSeekbar: JPanel
-    lateinit var switchHorizon: JCheckBox
-    private lateinit var tabPane: JPanel
-    private lateinit var tabviews: List<JLabel>
-    lateinit var progressRow: JPanel
-    lateinit var progressBar: JProgressBar
-    lateinit var progressLabel: JLabel
-    private var suppressNumberListener = false
-    /** 0 = 第一个数值(numberA), 1 = 第二个数值(numberB) */
-    private var selectedHandle = 0
-
-    private lateinit var radioTransformTrans: JRadioButton
-    private lateinit var radioTransformFull: JRadioButton
-    private lateinit var checkEdgeEnhance: JCheckBox
+    lateinit var modePanel: StitchModePanel
+    lateinit var numberEditPanel: NumberEditPanel
 
     enum class StitchType(val label: String) {
         AUTO("自动"), TILE("平铺"), MAN("手动")
@@ -82,6 +58,12 @@ class EditActivity {
         this.projectKey = projectKey
         this.project = ProjectManager.getProject(projectKey)
         this.editorService = EditorService(projectKey, this)
+        this.selectPanel = EditorSelectPanel(
+            project = project,
+            onSwap = { editorService.swapSelected() },
+            onRemove = { editorService.removeSelected() },
+            onSelectionChanged = { updateSelectInfo() }
+        )
     }
 
     fun show() {
@@ -96,6 +78,37 @@ class EditActivity {
         editView = EditorView(this)
         frame.add(editView, BorderLayout.CENTER)
 
+        modePanel = StitchModePanel(
+            selectItems = selectItems,
+            onStitch = { fullTransform, edgeEnhance -> editorService.stitch(fullTransform, edgeEnhance) },
+            onTabChanged = { type -> stitchType = type; updateSelectInfo() },
+            onSeekbarChange = { a, b ->
+                project.updateUndo(modePanel.seekbar) { editorService.setNumber(a, b, true) }
+                updateNumber()
+                editView.update()
+            },
+            onSave = { editorService.saveImage() },
+            onSeekbarTouchUp = { project.clearUndoTag() },
+            onDropdownChanged = { newVal -> selectIndex = newVal; updateSelectInfo() }
+        )
+
+        numberEditPanel = NumberEditPanel(
+            stitchType = { stitchType },
+            selectIndex = { selectIndex },
+            selectItems = { selectItems },
+            switchHorizon = { modePanel.switchHorizon.isSelected },
+            onNumberChanged = { a, b ->
+                project.updateUndo(numberEditPanel) { editorService.setNumber(a, b) }
+            },
+            onSeekbarUpdate = {
+                modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
+            },
+            onEditViewUpdate = { editView.update() }
+        )
+        modePanel.addNumberView(numberEditPanel.numberView)
+        numberEditPanel.numberA.addActionListener { modePanel.seekbar.requestFocusInWindow() }
+        numberEditPanel.numberB.addActionListener { modePanel.seekbar.requestFocusInWindow() }
+
         val bottomPanel = createBottomPanel()
         frame.add(bottomPanel, BorderLayout.SOUTH)
 
@@ -103,99 +116,64 @@ class EditActivity {
         frame.add(topBar, BorderLayout.NORTH)
 
         val rootPane = frame.rootPane
-        rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().menuShortcutKeyMask), "undo")
-        rootPane.actionMap.put("undo", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) {
-                project.undo(); updateSelectInfo()
-            }
-        })
-        rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, Toolkit.getDefaultToolkit().menuShortcutKeyMask), "selectAll")
-        rootPane.actionMap.put("selectAll", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) { selectAll() }
-        })
-        rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "selectClear")
-        rootPane.actionMap.put("selectClear", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) { selectClear() }
-        })
-        rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, Toolkit.getDefaultToolkit().menuShortcutKeyMask), "save")
-        rootPane.actionMap.put("save", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) { editorService.saveImage() }
-        })
-        rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, Toolkit.getDefaultToolkit().menuShortcutKeyMask), "stitch")
-rootPane.actionMap.put("stitch", object : AbstractAction() {
-    override fun actionPerformed(e: java.awt.event.ActionEvent) {
-        editorService.stitch(radioTransformFull.isSelected, checkEdgeEnhance.isSelected)
-    }
-})
-        rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "delete")
-        rootPane.actionMap.put("delete", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) { editorService.removeSelected() }
-        })
-        rootPane.inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "delete")
-
-        // ↑/↓: 切换第一个/第二个数值（WHEN_ANCESTOR_OF_FOCUSED_COMPONENT 确保子组件有焦点时也能触发）
-        rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "selHandleB")
-        rootPane.actionMap.put("selHandleB", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) {
-                if (!panelSeekbar.isVisible) return
+        ShortcutManager(rootPane, mapOf(
+            "undo" to { project.undo(); updateSelectInfo() },
+            "selectAll" to { selectPanel.selectAll() },
+            "selectClear" to { selectPanel.selectClear() },
+            "save" to { editorService.saveImage() },
+            "stitch" to { editorService.stitch(modePanel.radioTransformFull.isSelected, modePanel.checkEdgeEnhance.isSelected) },
+            "selHandleB" to {
+                if (!modePanel.panelSeekbar.isVisible) return@to
                 val showB = stitchType != StitchType.AUTO && (
                     stitchType == StitchType.TILE || (selectItems[selectIndex]?.second == true))
-                if (!showB) return
-                selectedHandle = 1
-                updateNumberView()
-            }
-        })
-        rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), "selHandleA")
-        rootPane.actionMap.put("selHandleA", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) {
-                if (!panelSeekbar.isVisible) return
-                selectedHandle = 0
-                updateNumberView()
-            }
-        })
-        // ←/→: 递减/递增当前选中的数值（WHEN_ANCESTOR_OF_FOCUSED_COMPONENT 确保子组件有焦点时也能触发）
-        rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "decValue")
-        rootPane.actionMap.put("decValue", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) {
-                if (!panelSeekbar.isVisible) return
-                if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return
+                if (!showB) return@to
+                numberEditPanel.selectedHandle = 1
+                numberEditPanel.updateNumberView()
+            },
+            "selHandleA" to {
+                if (!modePanel.panelSeekbar.isVisible) return@to
+                numberEditPanel.selectedHandle = 0
+                numberEditPanel.updateNumberView()
+            },
+            "decValue" to {
+                if (!modePanel.panelSeekbar.isVisible) return@to
+                if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
                 val rounding = if (stitchType == StitchType.TILE) 2
                     else (selectItems[selectIndex]?.first ?: 0)
                 val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
-                if (selectedHandle == 0) {
-                    val num = (numberA.text.toFloatOrNull() ?: 0f) - step
-                    project.updateUndo(this) { editorService.setNumber(num) }
-                    updateNumberView(num, null)
+                if (numberEditPanel.selectedHandle == 0) {
+                    val num = (numberEditPanel.numberA.text.toFloatOrNull() ?: 0f) - step
+                    project.updateUndo("decValue") { editorService.setNumber(num) }
+                    numberEditPanel.updateNumberView(num, null)
                 } else {
-                    val num = (numberB.text.toFloatOrNull() ?: 0f) - step
-                    project.updateUndo(this) { editorService.setNumber(null, num) }
-                    updateNumberView(null, num)
+                    val num = (numberEditPanel.numberB.text.toFloatOrNull() ?: 0f) - step
+                    project.updateUndo("decValue") { editorService.setNumber(null, num) }
+                    numberEditPanel.updateNumberView(null, num)
                 }
-                updateSeekbar(); editView.update()
-            }
-        })
-        rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0), "incValue")
-        rootPane.actionMap.put("incValue", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) {
-                if (!panelSeekbar.isVisible) return
-                if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return
+                modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
+                editView.update()
+            },
+            "incValue" to {
+                if (!modePanel.panelSeekbar.isVisible) return@to
+                if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
                 val rounding = if (stitchType == StitchType.TILE) 2
                     else (selectItems[selectIndex]?.first ?: 0)
                 val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
-                if (selectedHandle == 0) {
-                    val num = (numberA.text.toFloatOrNull() ?: 0f) + step
-                    project.updateUndo(this) { editorService.setNumber(num) }
-                    updateNumberView(num, null)
+                if (numberEditPanel.selectedHandle == 0) {
+                    val num = (numberEditPanel.numberA.text.toFloatOrNull() ?: 0f) + step
+                    project.updateUndo("incValue") { editorService.setNumber(num) }
+                    numberEditPanel.updateNumberView(num, null)
                 } else {
-                    val num = (numberB.text.toFloatOrNull() ?: 0f) + step
-                    project.updateUndo(this) { editorService.setNumber(null, num) }
-                    updateNumberView(null, num)
+                    val num = (numberEditPanel.numberB.text.toFloatOrNull() ?: 0f) + step
+                    project.updateUndo("incValue") { editorService.setNumber(null, num) }
+                    numberEditPanel.updateNumberView(null, num)
                 }
-                updateSeekbar(); editView.update()
+                modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
+                editView.update()
             }
-        })
+        ))
 
-        selectAll()
+        selectPanel.selectAll()
         frame.isVisible = true
         // 窗口显示后重新适配屏幕，确保缩放基于正确的窗口尺寸
         SwingUtilities.invokeLater { editView.update() }
@@ -229,331 +207,26 @@ rootPane.actionMap.put("stitch", object : AbstractAction() {
         gbc.fill = GridBagConstraints.HORIZONTAL
         gbc.weightx = 1.0
         return JPanel(GridBagLayout()).apply {
-            gbc.gridy = 0; add(createSelectRow(), gbc)
-            gbc.gridy = 1; add(createTabBar(), gbc)
-            gbc.gridy = 2; add(createAutoPanel(), gbc)
-            gbc.gridy = 3; add(createSeekbarPanel(), gbc)
-            gbc.gridy = 4; add(createProgressRow(), gbc)
-            gbc.gridy = 5; add(createActionRow(), gbc)
+            gbc.gridy = 0; add(selectPanel.createSelectRow(), gbc)
+            gbc.gridy = 1; add(modePanel.tabPane, gbc)
+            gbc.gridy = 2; add(modePanel.panelAuto, gbc)
+            gbc.gridy = 3; add(modePanel.panelSeekbar, gbc)
+            gbc.gridy = 4; add(modePanel.progressRow, gbc)
+            gbc.gridy = 5; add(modePanel.createActionRow(), gbc)
             background = Color(235, 235, 235)
         }
     }
 
-    private fun createSelectRow(): JPanel {
-        selectInfo = JLabel(Strings.get("edit.selected", 0, 0))
-        val selectAllBtn = JButton(Strings.get("edit.selectAll")).apply { addActionListener { selectAll() } }
-        val selectClearBtn = JButton(Strings.get("edit.deselect")).apply { addActionListener { selectClear() } }
-        val swapBtn = JButton(Strings.get("edit.swap")).apply { addActionListener { editorService.swapSelected() } }
-        val removeBtn = JButton(Strings.get("edit.delete")).apply { addActionListener { editorService.removeSelected() } }
-        return JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
-            add(selectInfo); add(selectAllBtn); add(selectClearBtn); add(swapBtn); add(removeBtn)
-        }
-    }
-
-    private fun createTabBar(): JPanel {
-        tabPane = JPanel(FlowLayout(FlowLayout.LEFT, 15, 4))
-        tabviews = StitchType.values().map { type ->
-            JLabel(type.label).apply {
-                border = javax.swing.border.EmptyBorder(4, 12, 4, 12)
-                toolTipText = type.label
-                addMouseListener(object : MouseAdapter() {
-                    override fun mouseClicked(e: MouseEvent) {
-                        stitchType = type
-                        updateSelectInfo()
-                    }
-                })
-                tabPane.add(this)
-            }
-        }
-        return tabPane
-    }
-
-    private fun createAutoPanel(): JPanel {
-        radioTransformTrans = JRadioButton(Strings.get("edit.transformTrans"))
-        radioTransformFull = JRadioButton(Strings.get("edit.transformFull")).apply { isSelected = true }
-        ButtonGroup().apply { add(radioTransformTrans); add(radioTransformFull) }
-        checkEdgeEnhance = JCheckBox(Strings.get("edit.edgeEnhance"))
-        val stitchBtn = JButton(Strings.get("edit.stitch")).apply {
-            foreground = Color.WHITE
-            background = PRIMARY_COLOR
-            addActionListener { editorService.stitch(radioTransformFull.isSelected, checkEdgeEnhance.isSelected) }
-        }
-        panelAuto = JPanel(FlowLayout(FlowLayout.LEFT, 10, 5)).apply {
-            add(radioTransformTrans); add(radioTransformFull); add(checkEdgeEnhance); add(stitchBtn)
-        }
-        return panelAuto
-    }
-
-    private fun createSeekbarPanel(): JPanel {
-        panelSeekbar = JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
-            switchHorizon = JCheckBox(Strings.get("edit.horizon"))
-            dropdown = JComboBox<String>().apply {
-                selectItems.keys.forEach { addItem(it) }
-                selectedItem = selectIndex
-                preferredSize = Dimension(100, 25)
-                isFocusable = false // 防止 ↑/↓ 被下拉框拦截用于切换选项
-                addActionListener {
-                    val newVal = selectedItem as? String
-                    if (newVal != null && newVal != selectIndex) {
-                        selectIndex = newVal
-                        updateSelectInfo()
-                    }
-                }
-            }
-            seekbar = RangeSlider().apply {
-                preferredSize = Dimension(200, 30)
-            }
-            seekbar.onRangeChange = { a, b ->
-                project.updateUndo(seekbar) { editorService.setNumber(a, b, true) }
-                updateNumber()
-                editView.update()
-            }
-            seekbar.onTouchUp = { project.clearUndoTag() }
-
-            numberView = JPanel()
-            numberView.layout = BoxLayout(numberView, BoxLayout.Y_AXIS)
-            numberA = JTextField("0", 6)
-            numberB = JTextField("0", 6)
-            numberDiv = JLabel("-")
-            numberDec = JButton("<")
-            numberInc = JButton(">")
-
-            numberA.document.addDocumentListener(object : DocumentListener {
-                override fun insertUpdate(e: DocumentEvent) { onNumberAChanged() }
-                override fun removeUpdate(e: DocumentEvent) { onNumberAChanged() }
-                override fun changedUpdate(e: DocumentEvent) { onNumberAChanged() }
-                private fun onNumberAChanged() {
-                    if (suppressNumberListener) return
-                    val num = numberA.text.toFloatOrNull() ?: return
-                    project.updateUndo(numberA) { editorService.setNumber(num) }
-                    updateSeekbar()
-                    editView.update()
-                }
-            })
-            numberA.addActionListener { seekbar.requestFocusInWindow() }
-
-            numberB.document.addDocumentListener(object : DocumentListener {
-                override fun insertUpdate(e: DocumentEvent) { onNumberBChanged() }
-                override fun removeUpdate(e: DocumentEvent) { onNumberBChanged() }
-                override fun changedUpdate(e: DocumentEvent) { onNumberBChanged() }
-                private fun onNumberBChanged() {
-                    if (suppressNumberListener) return
-                    val num = numberB.text.toFloatOrNull() ?: return
-                    project.updateUndo(numberB) { editorService.setNumber(null, num) }
-                    updateSeekbar()
-                    editView.update()
-                }
-            })
-            numberB.addActionListener { seekbar.requestFocusInWindow() }
-
-            numberDec.addActionListener {
-                val num = (numberA.text.toFloatOrNull() ?: 0f) -
-                    Math.pow(10.0, -(selectItems[selectIndex]?.first ?: 0).toDouble()).toFloat()
-                project.updateUndo(this) { editorService.setNumber(num) }
-                updateNumberView(num); updateSeekbar(); editView.update()
-            }
-            numberInc.addActionListener {
-                val num = (numberA.text.toFloatOrNull() ?: 0f) +
-                    Math.pow(10.0, -(selectItems[selectIndex]?.first ?: 0).toDouble()).toFloat()
-                project.updateUndo(this) { editorService.setNumber(num) }
-                updateNumberView(num); updateSeekbar(); editView.update()
-            }
-
-            val numRow = JPanel(FlowLayout(FlowLayout.CENTER, 4, 0))
-            numRow.add(numberDec); numRow.add(numberA); numRow.add(numberDiv); numRow.add(numberB); numRow.add(numberInc)
-            numberView.add(numRow)
-
-            add(switchHorizon); add(dropdown); add(seekbar); add(numberView)
-        }
-        return panelSeekbar
-    }
-
-    private fun createActionRow(): JPanel {
-        val saveBtn = JButton(Strings.get("edit.save")).apply {
-            foreground = Color.WHITE
-            background = PRIMARY_COLOR
-            addActionListener { editorService.saveImage() }
-        }
-        val rightPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 0, 0)).apply {
-            add(saveBtn)
-            border = javax.swing.border.EmptyBorder(0, 0, 0, 20)
-        }
-        return JPanel(BorderLayout()).apply {
-            add(JLabel(""), BorderLayout.CENTER)
-            add(rightPanel, BorderLayout.EAST)
-            border = javax.swing.border.EmptyBorder(0, 0, 8, 0)
-        }
-    }
-
-    private fun createProgressRow(): JPanel {
-        progressBar = JProgressBar()
-        progressLabel = JLabel()
-        progressRow = JPanel(FlowLayout(FlowLayout.LEFT, 10, 5)).apply {
-            add(progressLabel); add(progressBar)
-            isVisible = false
-        }
-        return progressRow
-    }
-
     fun updateSelectInfo() {
-        selectedHandle = 0
+        numberEditPanel.selectedHandle = 0
         editView.update()
-        selectInfo.text = Strings.get("edit.selected", project.selected.size, project.stitchInfo.size)
-        updateTab()
-        updateSeekbar()
-        updateNumber()
-    }
-
-    private fun updateTab() {
-        tabviews.forEach { label ->
-            val idx = tabviews.indexOf(label)
-            val type = StitchType.values()[idx]
-            label.foreground = if (type == stitchType) PRIMARY_COLOR else Color.BLACK
-            label.font = if (type == stitchType) label.font.deriveFont(Font.BOLD) else label.font.deriveFont(Font.PLAIN)
-        }
-
-        panelAuto.isVisible = stitchType == StitchType.AUTO
-        panelSeekbar.isVisible = stitchType != StitchType.AUTO
-        switchHorizon.isVisible = stitchType == StitchType.TILE
-        dropdown.isVisible = stitchType == StitchType.MAN
-    }
-
-    val selectedStitchInfo: List<Stitch.StitchInfo>
-        get() = when {
-            stitchType == StitchType.MAN && selectIndex in listOf(labelDx, labelDy, labelTrim) ->
-                project.stitchInfo.filterIndexed { i, v ->
-                    i > 0 && project.selected.contains(v.imageKey)
-                }
-            else -> project.stitchInfo.filter { project.selected.contains(it.imageKey) }
-        }
-
-    fun updateSeekbar() {
-        val selected = selectedStitchInfo
-        if (selected.isNotEmpty()) {
-            seekbar.isEnabled = true
-            seekbar.constrainHandles = stitchType != StitchType.TILE
-            when {
-                stitchType == StitchType.TILE -> {
-                    seekbar.type = RangeSlider.TYPE_RANGE
-                    if (switchHorizon.isSelected) {
-                        seekbar.a = selected.map { (1 - it.dx / it.width) * it.a }.average().toFloat()
-                        seekbar.b = selected.map { it.a + (1 - it.a) * (it.dx / it.width) }.average().toFloat()
-                    } else {
-                        seekbar.a = selected.map { (1 - it.dy / it.height) * it.a }.average().toFloat()
-                        seekbar.b = selected.map { it.a + (1 - it.a) * (it.dy / it.height) }.average().toFloat()
-                    }
-                }
-                selectIndex == labelDx -> {
-                    seekbar.type = RangeSlider.TYPE_CENTER
-                    seekbar.a = selected.map { (it.dx / it.width + 1) / 2 }.average().toFloat()
-                }
-                selectIndex == labelDy -> {
-                    seekbar.type = RangeSlider.TYPE_CENTER
-                    seekbar.a = selected.map { (it.dy / it.height + 1) / 2 }.average().toFloat()
-                }
-                selectIndex == labelTrim -> {
-                    seekbar.type = RangeSlider.TYPE_GRADIENT
-                    seekbar.a = selected.map { it.a }.average().toFloat()
-                    seekbar.b = selected.map { it.b }.average().toFloat()
-                }
-                selectIndex == labelXrange -> {
-                    seekbar.type = RangeSlider.TYPE_RANGE
-                    seekbar.a = selected.map { it.xa }.average().toFloat()
-                    seekbar.b = selected.map { it.xb }.average().toFloat()
-                }
-                selectIndex == labelYrange -> {
-                    seekbar.type = RangeSlider.TYPE_RANGE
-                    seekbar.a = selected.map { it.ya }.average().toFloat()
-                    seekbar.b = selected.map { it.yb }.average().toFloat()
-                }
-                selectIndex == labelScale -> {
-                    seekbar.type = RangeSlider.TYPE_CENTER
-                    seekbar.a = selected.map { it.dscale / 2f }.average().toFloat()
-                }
-                selectIndex == labelRotate -> {
-                    seekbar.type = RangeSlider.TYPE_CENTER
-                    seekbar.a = selected.map { (it.drot / 360) + 0.5f }.average().toFloat()
-                }
-            }
-            seekbar.repaint()
-        } else {
-            seekbar.isEnabled = false
-        }
+        selectPanel.updateSelectInfo()
+        modePanel.updateTab(stitchType)
+        modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
+        numberEditPanel.updateNumber(selectPanel.selectedStitchInfo)
     }
 
     fun updateNumber() {
-        val selected = selectedStitchInfo
-        if (selected.isNotEmpty()) {
-            numberView.isVisible = true
-            when {
-                stitchType == StitchType.TILE -> {
-                    if (switchHorizon.isSelected) {
-                        updateNumberView(
-                            selected.map { (1 - it.dx / it.width) * it.a }.average().toFloat(),
-                            selected.map { it.a + (1 - it.a) * (it.dx / it.width) }.average().toFloat()
-                        )
-                    } else {
-                        updateNumberView(
-                            selected.map { (1 - it.dy / it.height) * it.a }.average().toFloat(),
-                            selected.map { it.a + (1 - it.a) * (it.dy / it.height) }.average().toFloat()
-                        )
-                    }
-                }
-                selectIndex == labelDx -> updateNumberView(selected.map { it.dx }.average().toFloat())
-                selectIndex == labelDy -> updateNumberView(selected.map { it.dy }.average().toFloat())
-                selectIndex == labelTrim -> updateNumberView(
-                    selected.map { it.a }.average().toFloat(),
-                    selected.map { it.b }.average().toFloat()
-                )
-                selectIndex == labelXrange -> updateNumberView(
-                    selected.map { it.xa * it.width }.average().toFloat(),
-                    selected.map { it.xb * it.width }.average().toFloat()
-                )
-                selectIndex == labelYrange -> updateNumberView(
-                    selected.map { it.ya * it.height }.average().toFloat(),
-                    selected.map { it.yb * it.height }.average().toFloat()
-                )
-                selectIndex == labelScale -> updateNumberView(selected.map { it.dscale }.average().toFloat())
-                selectIndex == labelRotate -> updateNumberView(selected.map { it.drot }.average().toFloat())
-            }
-        } else {
-            numberView.isVisible = false
-        }
-    }
-
-    private fun updateNumberView(a: Float? = null, b: Float? = null) {
-        val (roundOf, showB) = if (stitchType == StitchType.MAN)
-            selectItems[selectIndex] ?: (0 to false)
-        else (2 to true)
-        numberB.isVisible = showB
-        numberDiv.isVisible = showB
-        numberDec.isVisible = !showB
-        numberInc.isVisible = !showB
-        suppressNumberListener = true
-        if (a != null) numberA.text = String.format("%.${roundOf}f", a)
-        if (b != null) numberB.text = String.format("%.${roundOf}f", b)
-        suppressNumberListener = false
-        // 高亮选中的文本框
-        numberA.border = if (selectedHandle == 0) BorderFactory.createLineBorder(PRIMARY_COLOR, 2)
-            else BorderFactory.createLineBorder(Color(180, 180, 180))
-        if (showB)
-            numberB.border = if (selectedHandle == 1) BorderFactory.createLineBorder(PRIMARY_COLOR, 2)
-                else BorderFactory.createLineBorder(Color(180, 180, 180))
-    }
-
-    fun selectToggle(info: Stitch.StitchInfo) {
-        if (!project.selected.remove(info.imageKey)) project.selected.add(info.imageKey)
-        updateSelectInfo()
-    }
-
-    private fun selectAll() {
-        project.selected.clear()
-        project.selected.addAll(project.stitchInfo.map { it.imageKey })
-        updateSelectInfo()
-    }
-
-    private fun selectClear() {
-        project.selected.clear()
-        updateSelectInfo()
+        numberEditPanel.updateNumber(selectPanel.selectedStitchInfo)
     }
 }

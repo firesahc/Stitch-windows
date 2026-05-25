@@ -221,7 +221,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
             project?.save()
         }
         if (!dragging && touching != null) {
-            editActivity.selectToggle(touching)
+            editActivity.selectPanel.selectToggle(touching)
         }
     }
 

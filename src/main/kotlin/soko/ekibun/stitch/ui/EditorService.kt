@@ -24,10 +24,10 @@ class EditorService(
             return
         }
         val total = project.selected.size
-        activity.progressLabel.text = Strings.get("editor.progress", 0, total)
-        activity.progressBar.value = 0
-        activity.progressBar.maximum = total
-        activity.progressRow.isVisible = true
+        activity.modePanel.progressLabel.text = Strings.get("editor.progress", 0, total)
+        activity.modePanel.progressBar.value = 0
+        activity.modePanel.progressBar.maximum = total
+        activity.modePanel.progressRow.isVisible = true
 
         val failedIndices = mutableListOf<Int>()
         scope.launch {
@@ -47,8 +47,8 @@ class EditorService(
                             done++
                             val finalDone = done
                             SwingUtilities.invokeLater {
-                                activity.progressLabel.text = Strings.get("editor.progress", finalDone, total)
-                                activity.progressBar.value = finalDone
+                                activity.modePanel.progressLabel.text = Strings.get("editor.progress", finalDone, total)
+                                activity.modePanel.progressBar.value = finalDone
                             }
                         }
                         it
@@ -56,7 +56,7 @@ class EditorService(
                 }
             }
             SwingUtilities.invokeLater {
-                activity.progressRow.isVisible = false
+                activity.modePanel.progressRow.isVisible = false
                 activity.updateSelectInfo()
                 if (failedIndices.isNotEmpty()) {
                     val msg = "以下 ${failedIndices.size} 张图片拼接失败（编号从 0 开始）：\n" +
@@ -162,15 +162,15 @@ class EditorService(
     }
 
     fun setNumber(a: Float? = null, b: Float? = null, relative: Boolean = false) {
-        val selected = activity.selectedStitchInfo
+        val selected = activity.selectPanel.selectedStitchInfo
         if (selected.isNotEmpty()) selected.forEach {
             if (activity.stitchType == EditActivity.StitchType.TILE) {
-                val aa = a ?: activity.seekbar.a
-                val bb = b ?: activity.seekbar.b
+                val aa = a ?: activity.modePanel.seekbar.a
+                val bb = b ?: activity.modePanel.seekbar.b
                 val rest = 1 - bb + aa
                 it.a = if (rest > 0) aa / rest else 0f
                 it.b = it.a
-                if (activity.switchHorizon.isSelected) {
+                if (activity.modePanel.switchHorizon.isSelected) {
                     it.dx = (bb - aa) * it.width; it.dy = 0f
                 } else {
                     it.dy = (bb - aa) * it.height; it.dx = 0f
