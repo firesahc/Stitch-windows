@@ -2,11 +2,9 @@ package soko.ekibun.stitch
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import soko.ekibun.stitch.Renderer
+import soko.ekibun.stitch.service.UndoManager
 import soko.ekibun.stitch.util.PointF
 import soko.ekibun.stitch.ProjectManager
 import soko.ekibun.stitch.util.Rect
@@ -39,65 +37,24 @@ object Stitch {
             list
         }
 
-        private val stitchInfoBak by lazy {
-            mutableListOf<StitchInfo>().apply { addAll(stitchInfo.map { it.clone() }) }
-        }
-        private val selectedBak by lazy {
-            mutableSetOf<String>().apply { addAll(selected) }
-        }
-        private var undoTag: Any? = null
+        val undoManager = UndoManager()
         fun clearUndoTag() {
-            undoTag = null
+            undoManager.clearUndoTag()
         }
 
-        @Synchronized
         fun updateUndo(tag: Any? = System.currentTimeMillis(), immediateSave: Boolean = true, runBeforeSave: () -> Unit) {
-            if (tag != null && tag != undoTag) {
-                undoTag = tag
-                selectedBak.clear()
-                selectedBak.addAll(selected)
-                stitchInfoBak.clear()
-                stitchInfoBak.addAll(stitchInfo.map {
-                    it.clone()
-                })
-            }
-            runBeforeSave()
+            undoManager.updateUndo(tag, stitchInfo, selected, runBeforeSave)
             if (immediateSave) save()
         }
 
-        var job: Job? = null
         @Synchronized
         fun save() {
-            runBlocking {
-                job?.cancelAndJoin()
-                job = launch(App.dispatcherIO) job@{
-                    try {
-                        val info = stitchInfo.toList()
-                        if (!file.exists()) {
-                            if (info.isNotEmpty()) file.parentFile?.mkdirs()
-                            else return@job
-                        }
-                        file.writeText(gson.toJson(info))
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
-                }
-            }
+            undoManager.save(file, stitchInfo, gson)
         }
 
         @Synchronized
         fun undo() {
-            val last = stitchInfo.map { it.clone() }
-            val lastSelect = selected.map { it }
-            stitchInfo.clear()
-            stitchInfo.addAll(stitchInfoBak)
-            selected.clear()
-            selected.addAll(selectedBak)
-            selectedBak.clear()
-            selectedBak.addAll(lastSelect)
-            stitchInfoBak.clear()
-            stitchInfoBak.addAll(last)
-            undoTag = null
+            undoManager.undo(stitchInfo, selected)
             save()
         }
 
