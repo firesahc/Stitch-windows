@@ -204,7 +204,14 @@ class MainView(private val appContext: AppContext) : JFrame() {
             if (value is File) {
                 text = formatProjectName(value)
             }
-            border = BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            // Bottom separator line + padding for visual distinction between items
+            val bottomBorder = BorderFactory.createMatteBorder(0, 0, 1, 0, Color(220, 220, 220))
+            val padding = BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            border = BorderFactory.createCompoundBorder(bottomBorder, padding)
+            // Alternating row background for readability
+            if (!isSelected) {
+                background = if (index % 2 == 0) Color.WHITE else Color(248, 248, 250)
+            }
             return comp
         }
     }
