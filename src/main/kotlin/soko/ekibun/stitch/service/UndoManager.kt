@@ -2,10 +2,9 @@ package soko.ekibun.stitch.service
 
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import soko.ekibun.stitch.Stitch.StitchInfo
 import java.io.File
 
@@ -53,19 +52,17 @@ class UndoManager {
 
     @Synchronized
     fun save(file: File, stitchInfo: List<StitchInfo>, gson: Gson, dispatcherIO: CoroutineDispatcher) {
-        runBlocking {
-            job?.cancelAndJoin()
-            job = launch(dispatcherIO) job@{
-                try {
-                    val info = stitchInfo.toList()
-                    if (!file.exists()) {
-                        if (info.isNotEmpty()) file.parentFile?.mkdirs()
-                        else return@job
-                    }
-                    file.writeText(gson.toJson(info))
-                } catch (e: Exception) {
-                    e.printStackTrace()
+        job?.cancel()
+        job = GlobalScope.launch(dispatcherIO) {
+            try {
+                val info = stitchInfo.toList()
+                if (!file.exists()) {
+                    if (info.isNotEmpty()) file.parentFile?.mkdirs()
+                    else return@launch
                 }
+                file.writeText(gson.toJson(info))
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
