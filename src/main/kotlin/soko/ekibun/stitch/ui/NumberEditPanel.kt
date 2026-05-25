@@ -1,6 +1,8 @@
 package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.interfaces.IEditorActivity
+import soko.ekibun.stitch.interfaces.IEditorActivity.StitchType
 import soko.ekibun.stitch.util.PRIMARY_COLOR
 import java.awt.Color
 import java.awt.FlowLayout
@@ -18,7 +20,7 @@ import javax.swing.event.DocumentListener
  * 以及对应的 DocumentListener / ActionListener。
  */
 class NumberEditPanel(
-    private val stitchType: () -> EditActivity.StitchType,
+    private val stitchType: () -> StitchType,
     private val selectIndex: () -> String,
     private val selectItems: () -> Map<String, Pair<Int, Boolean>>,
     private val switchHorizon: () -> Boolean,
@@ -112,7 +114,7 @@ class NumberEditPanel(
         if (selectedStitchInfo.isNotEmpty()) {
             numberView.isVisible = true
             when {
-                stitchType() == EditActivity.StitchType.TILE -> {
+                stitchType() == StitchType.TILE -> {
                     if (switchHorizon()) {
                         updateNumberView(
                             selectedStitchInfo.map { (1 - it.dx / it.width) * it.a }.average().toFloat(),
@@ -125,28 +127,28 @@ class NumberEditPanel(
                         )
                     }
                 }
-                selectIndex() == EditActivity.labelDx ->
+                selectIndex() == IEditorActivity.labelDx ->
                     updateNumberView(selectedStitchInfo.map { it.dx }.average().toFloat())
-                selectIndex() == EditActivity.labelDy ->
+                selectIndex() == IEditorActivity.labelDy ->
                     updateNumberView(selectedStitchInfo.map { it.dy }.average().toFloat())
-                selectIndex() == EditActivity.labelTrim ->
+                selectIndex() == IEditorActivity.labelTrim ->
                     updateNumberView(
                         selectedStitchInfo.map { it.a }.average().toFloat(),
                         selectedStitchInfo.map { it.b }.average().toFloat()
                     )
-                selectIndex() == EditActivity.labelXrange ->
+                selectIndex() == IEditorActivity.labelXrange ->
                     updateNumberView(
                         selectedStitchInfo.map { it.xa * it.width }.average().toFloat(),
                         selectedStitchInfo.map { it.xb * it.width }.average().toFloat()
                     )
-                selectIndex() == EditActivity.labelYrange ->
+                selectIndex() == IEditorActivity.labelYrange ->
                     updateNumberView(
                         selectedStitchInfo.map { it.ya * it.height }.average().toFloat(),
                         selectedStitchInfo.map { it.yb * it.height }.average().toFloat()
                     )
-                selectIndex() == EditActivity.labelScale ->
+                selectIndex() == IEditorActivity.labelScale ->
                     updateNumberView(selectedStitchInfo.map { it.dscale }.average().toFloat())
-                selectIndex() == EditActivity.labelRotate ->
+                selectIndex() == IEditorActivity.labelRotate ->
                     updateNumberView(selectedStitchInfo.map { it.drot }.average().toFloat())
             }
         } else {
@@ -155,7 +157,7 @@ class NumberEditPanel(
     }
 
     fun updateNumberView(a: Float? = null, b: Float? = null) {
-        val (roundOf, showB) = if (stitchType() == EditActivity.StitchType.MAN)
+        val (roundOf, showB) = if (stitchType() == StitchType.MAN)
             selectItems()[selectIndex()] ?: (0 to false)
         else (2 to true)
         numberB.isVisible = showB

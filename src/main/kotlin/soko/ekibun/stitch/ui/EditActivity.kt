@@ -2,13 +2,14 @@ package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.interfaces.IEditorActivity
 import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.Strings
 import java.awt.*
 import java.awt.event.*
 import javax.swing.*
 
-class EditActivity {
+class EditActivity : IEditorActivity {
 
     companion object {
         fun open(appContext: AppContext, owner: JFrame, projectKey: String) {
@@ -17,14 +18,6 @@ class EditActivity {
                 editor.show()
             }
         }
-
-        val labelDx = "水平偏移"
-        val labelDy = "垂直偏移"
-        val labelTrim = "过渡"
-        val labelXrange = "水平范围"
-        val labelYrange = "垂直范围"
-        val labelScale = "缩放"
-        val labelRotate = "旋转"
     }
 
     private val appContext: AppContext
@@ -32,34 +25,34 @@ class EditActivity {
     val project: Stitch.StitchProject
 
     private lateinit var editorService: EditorService
-    val selectPanel: EditorSelectPanel
+    override val selectPanel: EditorSelectPanel
 
-    lateinit var editView: EditorView
-    lateinit var modePanel: StitchModePanel
+    override lateinit var editView: EditorView
+    override lateinit var modePanel: StitchModePanel
     lateinit var numberEditPanel: NumberEditPanel
 
-    enum class StitchType(val label: String) {
-        AUTO("自动"), TILE("平铺"), MAN("手动")
-    }
+    override val progressLabel: JLabel get() = modePanel.progressLabel
+    override val progressRow: JPanel get() = modePanel.progressRow
+    override val progressBar: JProgressBar get() = modePanel.progressBar
 
-    var stitchType = StitchType.AUTO
+    override var stitchType = IEditorActivity.StitchType.AUTO
 
     val selectItems = mapOf(
-        labelDx to (0 to false),
-        labelDy to (0 to false),
-        labelTrim to (2 to true),
-        labelXrange to (0 to true),
-        labelYrange to (0 to true),
-        labelScale to (2 to false),
-        labelRotate to (0 to false)
+        IEditorActivity.labelDx to (0 to false),
+        IEditorActivity.labelDy to (0 to false),
+        IEditorActivity.labelTrim to (2 to true),
+        IEditorActivity.labelXrange to (0 to true),
+        IEditorActivity.labelYrange to (0 to true),
+        IEditorActivity.labelScale to (2 to false),
+        IEditorActivity.labelRotate to (0 to false)
     )
-    var selectIndex = labelDy
+    override var selectIndex = IEditorActivity.labelDy
 
     constructor(appContext: AppContext, projectKey: String) {
         this.appContext = appContext
         this.projectKey = projectKey
         this.project = appContext.projectManager.getProject(projectKey)
-        this.editorService = EditorService(appContext, projectKey, this)
+        this.editorService = EditorService(appContext, projectKey, this as IEditorActivity)
         this.selectPanel = EditorSelectPanel(
             project = project,
             onSwap = { editorService.swapSelected() },
@@ -83,7 +76,7 @@ class EditActivity {
         modePanel = StitchModePanel(
             selectItems = selectItems,
             onStitch = { fullTransform, edgeEnhance -> editorService.stitch(fullTransform, edgeEnhance) },
-            onTabChanged = { type -> stitchType = type; updateSelectInfo() },
+            onTabChanged = { type: IEditorActivity.StitchType -> stitchType = type; updateSelectInfo() },
             onSeekbarChange = { a, b ->
                 project.updateUndo(modePanel.seekbar) { editorService.setNumber(a, b, true) }
                 updateNumber()
@@ -129,8 +122,8 @@ class EditActivity {
         "stitch" to { editorService.stitch(modePanel.radioTransformFull.isSelected, modePanel.checkEdgeEnhance.isSelected) },
         "selHandleB" to {
             if (!modePanel.panelSeekbar.isVisible) return@to
-            val showB = stitchType != StitchType.AUTO && (
-                stitchType == StitchType.TILE || (selectItems[selectIndex]?.second == true))
+            val showB = stitchType != IEditorActivity.StitchType.AUTO && (
+                stitchType == IEditorActivity.StitchType.TILE || (selectItems[selectIndex]?.second == true))
             if (!showB) return@to
             numberEditPanel.selectedHandle = 1
             numberEditPanel.updateNumberView()
@@ -143,7 +136,7 @@ class EditActivity {
         "decValue" to {
             if (!modePanel.panelSeekbar.isVisible) return@to
             if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
-            val rounding = if (stitchType == StitchType.TILE) 2
+            val rounding = if (stitchType == IEditorActivity.StitchType.TILE) 2
                 else (selectItems[selectIndex]?.first ?: 0)
             val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
             if (numberEditPanel.selectedHandle == 0) {
@@ -161,7 +154,7 @@ class EditActivity {
         "incValue" to {
             if (!modePanel.panelSeekbar.isVisible) return@to
             if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
-            val rounding = if (stitchType == StitchType.TILE) 2
+            val rounding = if (stitchType == IEditorActivity.StitchType.TILE) 2
                 else (selectItems[selectIndex]?.first ?: 0)
             val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
             if (numberEditPanel.selectedHandle == 0) {
@@ -216,7 +209,7 @@ class EditActivity {
         }
     }
 
-    fun updateSelectInfo() {
+    override fun updateSelectInfo() {
         numberEditPanel.selectedHandle = 0
         editView.update()
         selectPanel.updateSelectInfo()

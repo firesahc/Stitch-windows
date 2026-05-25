@@ -1,6 +1,8 @@
 package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.interfaces.IEditorActivity
+import soko.ekibun.stitch.interfaces.IEditorActivity.StitchType
 import soko.ekibun.stitch.util.PRIMARY_COLOR
 import soko.ekibun.stitch.util.Strings
 import java.awt.*
@@ -20,17 +22,17 @@ import javax.swing.*
 class StitchModePanel(
     val selectItems: Map<String, Pair<Int, Boolean>>,
     private val onStitch: ((fullTransform: Boolean, edgeEnhance: Boolean) -> Unit)? = null,
-    private val onTabChanged: ((stitchType: EditActivity.StitchType) -> Unit)? = null,
+    private val onTabChanged: ((stitchType: StitchType) -> Unit)? = null,
     private val onSeekbarChange: ((a: Float, b: Float) -> Unit)? = null,
     private val onSave: (() -> Unit)? = null,
     private val onSeekbarTouchUp: (() -> Unit)? = null,
     private val onDropdownChanged: ((newVal: String) -> Unit)? = null
 ) {
     /** Current stitch type – updated externally by EditActivity */
-    var stitchType: EditActivity.StitchType = EditActivity.StitchType.AUTO
+    var stitchType: StitchType = StitchType.AUTO
 
     /** Current select index – updated externally by EditActivity */
-    var selectIndex: String = EditActivity.labelDy
+    var selectIndex: String = IEditorActivity.labelDy
 
     // ---- Exposed components ----
 
@@ -60,7 +62,7 @@ class StitchModePanel(
 
     private fun createTabBar() {
         tabPane = JPanel(FlowLayout(FlowLayout.LEFT, 15, 4))
-        tabviews = EditActivity.StitchType.values().map { type ->
+        tabviews = StitchType.values().map { type ->
             JLabel(type.label).apply {
                 border = javax.swing.border.EmptyBorder(4, 12, 4, 12)
                 toolTipText = type.label
@@ -157,32 +159,32 @@ class StitchModePanel(
 
     // ---- Tab highlighting & panel visibility ----
 
-    fun updateTab(stitchType: EditActivity.StitchType) {
+    fun updateTab(stitchType: StitchType) {
         tabviews.forEach { label ->
             val idx = tabviews.indexOf(label)
-            val type = EditActivity.StitchType.values()[idx]
+            val type = StitchType.values()[idx]
             label.foreground = if (type == stitchType) PRIMARY_COLOR else Color.BLACK
             label.font = if (type == stitchType) label.font.deriveFont(Font.BOLD) else label.font.deriveFont(Font.PLAIN)
         }
 
-        panelAuto.isVisible = stitchType == EditActivity.StitchType.AUTO
-        panelSeekbar.isVisible = stitchType != EditActivity.StitchType.AUTO
-        switchHorizon.isVisible = stitchType == EditActivity.StitchType.TILE
-        dropdown.isVisible = stitchType == EditActivity.StitchType.MAN
+        panelAuto.isVisible = stitchType == StitchType.AUTO
+        panelSeekbar.isVisible = stitchType != StitchType.AUTO
+        switchHorizon.isVisible = stitchType == StitchType.TILE
+        dropdown.isVisible = stitchType == StitchType.MAN
     }
 
     // ---- Seekbar value calculation ----
 
     fun updateSeekbar(
-        stitchType: EditActivity.StitchType,
+        stitchType: StitchType,
         selectIndex: String,
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
         if (selectedStitchInfo.isNotEmpty()) {
             seekbar.isEnabled = true
-            seekbar.constrainHandles = stitchType != EditActivity.StitchType.TILE
-            if (stitchType == EditActivity.StitchType.TILE) {
+            seekbar.constrainHandles = stitchType != StitchType.TILE
+            if (stitchType == StitchType.TILE) {
                 TileSeekbarHandler.updateSeekbar(seekbar, selectedStitchInfo, switchHorizonSelected)
             } else {
                 seekbarHandlers[selectIndex]?.updateSeekbar(seekbar, selectedStitchInfo)
@@ -197,13 +199,13 @@ class StitchModePanel(
 
     companion object {
         private val seekbarHandlers: Map<String, SeekbarHandler> = mapOf(
-            EditActivity.labelDx to DxSeekbarHandler,
-            EditActivity.labelDy to DySeekbarHandler,
-            EditActivity.labelTrim to TrimSeekbarHandler,
-            EditActivity.labelXrange to XrangeSeekbarHandler,
-            EditActivity.labelYrange to YrangeSeekbarHandler,
-            EditActivity.labelScale to ScaleSeekbarHandler,
-            EditActivity.labelRotate to RotateSeekbarHandler
+            IEditorActivity.labelDx to DxSeekbarHandler,
+            IEditorActivity.labelDy to DySeekbarHandler,
+            IEditorActivity.labelTrim to TrimSeekbarHandler,
+            IEditorActivity.labelXrange to XrangeSeekbarHandler,
+            IEditorActivity.labelYrange to YrangeSeekbarHandler,
+            IEditorActivity.labelScale to ScaleSeekbarHandler,
+            IEditorActivity.labelRotate to RotateSeekbarHandler
         )
     }
 }

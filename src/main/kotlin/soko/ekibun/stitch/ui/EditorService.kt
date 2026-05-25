@@ -3,6 +3,8 @@ package soko.ekibun.stitch.ui
 import kotlinx.coroutines.*
 import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.interfaces.IEditorActivity
+import soko.ekibun.stitch.interfaces.IEditorActivity.StitchType
 import java.io.File
 import javax.imageio.ImageIO
 import soko.ekibun.stitch.util.Strings
@@ -11,7 +13,7 @@ import javax.swing.*
 class EditorService(
     private val appContext: AppContext,
     private val projectKey: String,
-    private val activity: EditActivity,
+    private val activity: IEditorActivity,
 ) {
     val project: Stitch.StitchProject
         get() = appContext.projectManager.getProject(projectKey)
@@ -24,10 +26,10 @@ class EditorService(
             return
         }
         val total = project.selected.size
-        activity.modePanel.progressLabel.text = Strings.get("editor.progress", 0, total)
-        activity.modePanel.progressBar.value = 0
-        activity.modePanel.progressBar.maximum = total
-        activity.modePanel.progressRow.isVisible = true
+        activity.progressLabel.text = Strings.get("editor.progress", 0, total)
+        activity.progressBar.value = 0
+        activity.progressBar.maximum = total
+        activity.progressRow.isVisible = true
 
         val failedIndices = mutableListOf<Int>()
         scope.launch {
@@ -47,8 +49,8 @@ class EditorService(
                             done++
                             val finalDone = done
                             SwingUtilities.invokeLater {
-                                activity.modePanel.progressLabel.text = Strings.get("editor.progress", finalDone, total)
-                                activity.modePanel.progressBar.value = finalDone
+                                activity.progressLabel.text = Strings.get("editor.progress", finalDone, total)
+                                activity.progressBar.value = finalDone
                             }
                         }
                         it
@@ -56,7 +58,7 @@ class EditorService(
                 }
             }
             SwingUtilities.invokeLater {
-                activity.modePanel.progressRow.isVisible = false
+                activity.progressRow.isVisible = false
                 activity.updateSelectInfo()
                 if (failedIndices.isNotEmpty()) {
                     val msg = "以下 ${failedIndices.size} 张图片拼接失败（编号从 0 开始）：\n" +
@@ -159,13 +161,13 @@ class EditorService(
 
     companion object {
     private val numberHandlers = mapOf(
-        EditActivity.labelDx to NumberLabelHandler.Dx,
-        EditActivity.labelDy to NumberLabelHandler.Dy,
-        EditActivity.labelTrim to NumberLabelHandler.Trim,
-        EditActivity.labelXrange to NumberLabelHandler.Xrange,
-        EditActivity.labelYrange to NumberLabelHandler.Yrange,
-        EditActivity.labelScale to NumberLabelHandler.Scale,
-        EditActivity.labelRotate to NumberLabelHandler.Rotate,
+        IEditorActivity.labelDx to NumberLabelHandler.Dx,
+        IEditorActivity.labelDy to NumberLabelHandler.Dy,
+        IEditorActivity.labelTrim to NumberLabelHandler.Trim,
+        IEditorActivity.labelXrange to NumberLabelHandler.Xrange,
+        IEditorActivity.labelYrange to NumberLabelHandler.Yrange,
+        IEditorActivity.labelScale to NumberLabelHandler.Scale,
+        IEditorActivity.labelRotate to NumberLabelHandler.Rotate,
     )
 
     sealed class NumberLabelHandler {
@@ -228,7 +230,7 @@ class EditorService(
     fun setNumber(a: Float? = null, b: Float? = null, relative: Boolean = false) {
         val selected = activity.selectPanel.selectedStitchInfo
         if (selected.isNotEmpty()) selected.forEach {
-            if (activity.stitchType == EditActivity.StitchType.TILE) {
+            if (activity.stitchType == StitchType.TILE) {
                 val aa = a ?: activity.modePanel.seekbar.a
                 val bb = b ?: activity.modePanel.seekbar.b
                 val rest = 1 - bb + aa
