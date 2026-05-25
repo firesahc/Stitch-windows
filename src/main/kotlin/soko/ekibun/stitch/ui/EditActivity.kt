@@ -109,75 +109,72 @@ class EditActivity {
         numberEditPanel.numberA.addActionListener { modePanel.seekbar.requestFocusInWindow() }
         numberEditPanel.numberB.addActionListener { modePanel.seekbar.requestFocusInWindow() }
 
-        val bottomPanel = createBottomPanel()
-        frame.add(bottomPanel, BorderLayout.SOUTH)
+        frame.add(createBottomPanel(), BorderLayout.SOUTH)
+        frame.add(createTopBar(), BorderLayout.NORTH)
 
-        val topBar = createTopBar()
-        frame.add(topBar, BorderLayout.NORTH)
-
-        val rootPane = frame.rootPane
-        ShortcutManager(rootPane, mapOf(
-            "undo" to { project.undo(); updateSelectInfo() },
-            "selectAll" to { selectPanel.selectAll() },
-            "selectClear" to { selectPanel.selectClear() },
-            "save" to { editorService.saveImage() },
-            "stitch" to { editorService.stitch(modePanel.radioTransformFull.isSelected, modePanel.checkEdgeEnhance.isSelected) },
-            "selHandleB" to {
-                if (!modePanel.panelSeekbar.isVisible) return@to
-                val showB = stitchType != StitchType.AUTO && (
-                    stitchType == StitchType.TILE || (selectItems[selectIndex]?.second == true))
-                if (!showB) return@to
-                numberEditPanel.selectedHandle = 1
-                numberEditPanel.updateNumberView()
-            },
-            "selHandleA" to {
-                if (!modePanel.panelSeekbar.isVisible) return@to
-                numberEditPanel.selectedHandle = 0
-                numberEditPanel.updateNumberView()
-            },
-            "decValue" to {
-                if (!modePanel.panelSeekbar.isVisible) return@to
-                if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
-                val rounding = if (stitchType == StitchType.TILE) 2
-                    else (selectItems[selectIndex]?.first ?: 0)
-                val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
-                if (numberEditPanel.selectedHandle == 0) {
-                    val num = (numberEditPanel.numberA.text.toFloatOrNull() ?: 0f) - step
-                    project.updateUndo("decValue") { editorService.setNumber(num) }
-                    numberEditPanel.updateNumberView(num, null)
-                } else {
-                    val num = (numberEditPanel.numberB.text.toFloatOrNull() ?: 0f) - step
-                    project.updateUndo("decValue") { editorService.setNumber(null, num) }
-                    numberEditPanel.updateNumberView(null, num)
-                }
-                modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
-                editView.update()
-            },
-            "incValue" to {
-                if (!modePanel.panelSeekbar.isVisible) return@to
-                if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
-                val rounding = if (stitchType == StitchType.TILE) 2
-                    else (selectItems[selectIndex]?.first ?: 0)
-                val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
-                if (numberEditPanel.selectedHandle == 0) {
-                    val num = (numberEditPanel.numberA.text.toFloatOrNull() ?: 0f) + step
-                    project.updateUndo("incValue") { editorService.setNumber(num) }
-                    numberEditPanel.updateNumberView(num, null)
-                } else {
-                    val num = (numberEditPanel.numberB.text.toFloatOrNull() ?: 0f) + step
-                    project.updateUndo("incValue") { editorService.setNumber(null, num) }
-                    numberEditPanel.updateNumberView(null, num)
-                }
-                modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
-                editView.update()
-            }
-        ))
+        ShortcutManager(frame.rootPane, createShortcutActions())
 
         selectPanel.selectAll()
         frame.isVisible = true
-        // 窗口显示后重新适配屏幕，确保缩放基于正确的窗口尺寸
         SwingUtilities.invokeLater { editView.update() }
     }
+
+    private fun createShortcutActions(): Map<String, () -> Unit> = mapOf(
+        "undo" to { project.undo(); updateSelectInfo() },
+        "selectAll" to { selectPanel.selectAll() },
+        "selectClear" to { selectPanel.selectClear() },
+        "save" to { editorService.saveImage() },
+        "stitch" to { editorService.stitch(modePanel.radioTransformFull.isSelected, modePanel.checkEdgeEnhance.isSelected) },
+        "selHandleB" to {
+            if (!modePanel.panelSeekbar.isVisible) return@to
+            val showB = stitchType != StitchType.AUTO && (
+                stitchType == StitchType.TILE || (selectItems[selectIndex]?.second == true))
+            if (!showB) return@to
+            numberEditPanel.selectedHandle = 1
+            numberEditPanel.updateNumberView()
+        },
+        "selHandleA" to {
+            if (!modePanel.panelSeekbar.isVisible) return@to
+            numberEditPanel.selectedHandle = 0
+            numberEditPanel.updateNumberView()
+        },
+        "decValue" to {
+            if (!modePanel.panelSeekbar.isVisible) return@to
+            if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
+            val rounding = if (stitchType == StitchType.TILE) 2
+                else (selectItems[selectIndex]?.first ?: 0)
+            val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
+            if (numberEditPanel.selectedHandle == 0) {
+                val num = (numberEditPanel.numberA.text.toFloatOrNull() ?: 0f) - step
+                project.updateUndo("decValue") { editorService.setNumber(num) }
+                numberEditPanel.updateNumberView(num, null)
+            } else {
+                val num = (numberEditPanel.numberB.text.toFloatOrNull() ?: 0f) - step
+                project.updateUndo("decValue") { editorService.setNumber(null, num) }
+                numberEditPanel.updateNumberView(null, num)
+            }
+            modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
+            editView.update()
+        },
+        "incValue" to {
+            if (!modePanel.panelSeekbar.isVisible) return@to
+            if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
+            val rounding = if (stitchType == StitchType.TILE) 2
+                else (selectItems[selectIndex]?.first ?: 0)
+            val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
+            if (numberEditPanel.selectedHandle == 0) {
+                val num = (numberEditPanel.numberA.text.toFloatOrNull() ?: 0f) + step
+                project.updateUndo("incValue") { editorService.setNumber(num) }
+                numberEditPanel.updateNumberView(num, null)
+            } else {
+                val num = (numberEditPanel.numberB.text.toFloatOrNull() ?: 0f) + step
+                project.updateUndo("incValue") { editorService.setNumber(null, num) }
+                numberEditPanel.updateNumberView(null, num)
+            }
+            modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
+            editView.update()
+        }
+    )
 
     private fun createTopBar(): JPanel {
         val undoBtn = JButton(Strings.get("edit.undo"))
