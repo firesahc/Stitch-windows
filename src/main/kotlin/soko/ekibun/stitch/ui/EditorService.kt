@@ -83,7 +83,7 @@ class EditorService(
             val selected = project.selected.toList()
             val i = project.indexOfInfo(selected.last())
             if (i < 0) return@updateUndo
-            var a = project.getStitchInfo(i)!!
+            var a = project.getStitchInfo(i) ?: return@updateUndo
             val adx = a.dx; val ady = a.dy; val adr = a.drot; val ads = a.dscale
             for (indic in 0 until selected.size - 1) {
                 val j = project.indexOfInfo(selected[indic])

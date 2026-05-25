@@ -11,18 +11,17 @@ import javax.swing.JPanel
 
 class EditorSelectPanel(
     private val project: Stitch.StitchProject,
+    private val stitchType: () -> StitchType,
+    private val selectIndex: () -> String,
     private val onSwap: () -> Unit,
     private val onRemove: () -> Unit,
     private val onSelectionChanged: (() -> Unit)?
 ) {
-    var stitchType: StitchType = StitchType.AUTO
-    var selectIndex: String = IEditorActivity.labelDy
-
     val selectInfo: JLabel = JLabel(Strings.get("edit.selected", 0, 0))
 
     val selectedStitchInfo: List<Stitch.StitchInfo>
         get() = when {
-            stitchType == StitchType.MAN && selectIndex in listOf(IEditorActivity.labelDx, IEditorActivity.labelDy, IEditorActivity.labelTrim) ->
+            stitchType() == StitchType.MAN && selectIndex() in listOf(IEditorActivity.labelDx, IEditorActivity.labelDy, IEditorActivity.labelTrim) ->
                 project.stitchInfo.filterIndexed { i, v ->
                     i > 0 && project.isSelected(v.imageKey)
                 }

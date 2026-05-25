@@ -92,6 +92,8 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
 
         if (bound.width() <= 0f || bound.height() <= 0f) return
 
+        val p = project ?: return
+
         val transX = max(0.0, (w - bound.width().toDouble() * scale) / 2) - scrollX
         val transY = max(0.0, (h - bound.height().toDouble() * scale) / 2) - scrollY
 
@@ -103,6 +105,11 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
         val buffer = offscreenBuffer!!
         val bg = buffer.createGraphics()
         try {
+            // Clear buffer to transparent before drawing — prevents ghosting from stale pixels
+            bg.setComposite(AlphaComposite.Clear)
+            bg.fillRect(0, 0, w, h)
+            bg.setComposite(AlphaComposite.SrcOver)
+
             bg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
             bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
 
@@ -110,7 +117,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
             bg.scale(scale, scale)
 
             val maskColor = GraphicsHelper.colorToInt(Color(136, 136, 136, 136))
-            project?.drawToCanvas(bg, true, maskColor, GraphicsHelper.colorToInt(Color.BLACK), 0)
+            p.drawToCanvas(bg, true, maskColor, GraphicsHelper.colorToInt(Color.BLACK), 0)
 
             // Draw UI overlay (circles, numbers, connection lines)
             val radius = 20.0 / scale
@@ -119,9 +126,9 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
 
             bg.font = Font(Font.SANS_SERIF, Font.PLAIN, textSize.toInt())
 
-            project?.stitchInfo?.let { infoList ->
+            p.stitchInfo.let { infoList ->
                 infoList.firstOrNull()?.let { info ->
-                    val sel = project!!.isSelected(info.imageKey)
+                    val sel = p.isSelected(info.imageKey)
                     bg.color = if (sel) colorPrimary else colorUnselected
                     bg.fillOval((info.cx - radius).toInt(), (info.cy - radius).toInt(), (radius * 2).toInt(), (radius * 2).toInt())
                     bg.color = Color.WHITE
@@ -132,7 +139,7 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
                 }
 
                 infoList.reduceIndexedOrNull { i, acc, info ->
-                    val sel = project!!.isSelected(info.imageKey)
+                    val sel = p.isSelected(info.imageKey)
                     bg.color = if (sel) colorPrimary else colorUnselected
                     bg.fillOval((info.cx - radius).toInt(), (info.cy - radius).toInt(), (radius * 2).toInt(), (radius * 2).toInt())
 
