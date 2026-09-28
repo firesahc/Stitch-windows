@@ -149,24 +149,51 @@ class EditorService(
     }
 
     fun addImage(file: File): Boolean {
-        try {
-            val bufferedImage = ImageIO.read(file)
-            if (bufferedImage == null) {
-                dialogs.error(Strings.get("dialog.imageLoadFailed", file.name), Strings.get("common.error"))
-                return false
+        val before = project.stitchInfo.size
+        addImages(listOf(file))
+        return project.stitchInfo.size > before
+    }
+
+    fun addImages(files: List<File>): Int {
+        if (files.isEmpty()) return 0
+        val imageFiles = files.filter { it.isFile && SUPPORTED_EXTENSIONS.contains(it.extension.lowercase()) }
+        val skippedUnsupported = files.size - imageFiles.size
+        data class Decoded(val image: java.awt.image.BufferedImage, val source: File)
+        val decoded = mutableListOf<Decoded>()
+        val failed = mutableListOf<String>()
+        for (f in imageFiles) {
+            try {
+                val bufferedImage = ImageIO.read(f)
+                if (bufferedImage == null) failed.add(f.name)
+                else decoded.add(Decoded(bufferedImage, f))
+            } catch (e: Exception) {
+                failed.add(f.name)
             }
-            val key = appContext.bitmapCache.saveBitmap(projectKey, bufferedImage)
-            val info = Stitch.StitchInfo(key, bufferedImage.width, bufferedImage.height)
-            project.updateUndo { project.stitchInfo.add(info); project.selected.add(info.imageKey) }
-            activity.updateSelectInfo()
-            return true
-        } catch (e: Exception) {
-            dialogs.error(Strings.get("dialog.imageLoadError", e.message), Strings.get("common.error"))
-            return false
         }
+        if (decoded.isNotEmpty()) {
+            project.updateUndo("dropImages") {
+                decoded.forEach { d ->
+                    val key = appContext.bitmapCache.saveBitmap(projectKey, d.image)
+                    val info = Stitch.StitchInfo(key, d.image.width, d.image.height)
+                    project.stitchInfo.add(info)
+                    project.selected.add(info.imageKey)
+                }
+            }
+            activity.updateSelectInfo()
+        }
+        val skippedTotal = skippedUnsupported + failed.size
+        if (decoded.isEmpty()) {
+            dialogs.warn(Strings.get("dialog.dropNoSupported"), Strings.get("common.warning"))
+        } else if (skippedTotal > 0) {
+            val detail = (files.filter { !it.isFile || !SUPPORTED_EXTENSIONS.contains(it.extension.lowercase()) }.map { it.name } + failed)
+                .take(5).joinToString(", ")
+            dialogs.warn(Strings.get("dialog.dropSkipped", decoded.size, skippedTotal, detail), Strings.get("common.warning"))
+        }
+        return decoded.size
     }
 
     companion object {
+        val SUPPORTED_EXTENSIONS = setOf("png", "jpg", "jpeg", "bmp")
         @Deprecated("已收敛至 domain.ParamMapper", ReplaceWith("ParamMapper", "soko.ekibun.stitch.domain.ParamMapper"))
         sealed class NumberLabelHandler {
             abstract fun apply(

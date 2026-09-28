@@ -4,6 +4,7 @@ import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.domain.ParamMapper
 import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.Rect
+import soko.ekibun.stitch.util.Strings
 import java.awt.*
 import java.awt.event.*
 import javax.swing.JPanel
@@ -91,7 +92,10 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
         val h = height
         if (w <= 0 || h <= 0) return
 
-        if (bound.width() <= 0f || bound.height() <= 0f) return
+        if (bound.width() <= 0f || bound.height() <= 0f) {
+            drawDropHint(g2d, w, h)
+            return
+        }
 
         val p = project ?: return
 
@@ -259,6 +263,14 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
         val transX = max(0.0, (width - bound.width().toDouble() * scale) / 2) - scrollX
         val transY = max(0.0, (height - bound.height().toDouble() * scale) / 2) - scrollY
         return transX to transY
+    }
+
+    private fun drawDropHint(g2d: Graphics2D, w: Int, h: Int) {
+        g2d.color = Color(160, 160, 160)
+        g2d.font = Font(Font.SANS_SERIF, Font.PLAIN, 15)
+        val fm = g2d.fontMetrics
+        val text = Strings.get("edit.dropHint")
+        g2d.drawString(text, (w - fm.stringWidth(text)) / 2, h / 2)
     }
 
     fun drawToBitmap(): java.awt.image.BufferedImage {

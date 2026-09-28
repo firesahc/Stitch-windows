@@ -128,8 +128,13 @@ class EditActivity : IEditorActivity {
         numberEditPanel.numberA.addActionListener { modePanel.seekbar.requestFocusInWindow() }
         numberEditPanel.numberB.addActionListener { modePanel.seekbar.requestFocusInWindow() }
 
-        frame.add(createBottomPanel(), BorderLayout.SOUTH)
-        frame.add(createTopBar(), BorderLayout.NORTH)
+        val bottomPanel = createBottomPanel()
+        val topBar = createTopBar()
+        frame.add(bottomPanel, BorderLayout.SOUTH)
+        frame.add(topBar, BorderLayout.NORTH)
+
+        val dropHandler = ImageDropHandler { files -> editorService.addImages(files) }
+        installDropHandler(frame.rootPane, dropHandler)
 
         ShortcutManager(frame.rootPane, createShortcutActions())
 
@@ -196,6 +201,17 @@ class EditActivity : IEditorActivity {
         }
     )
 
+    private fun installDropHandler(comp: Component, handler: ImageDropHandler) {
+        // 保留文本框默认传输行为，其余容器/按钮统一接受文件拖放
+        if (comp is JTextField) return
+        if (comp is JComponent && comp.transferHandler == null) {
+            comp.transferHandler = handler
+        }
+        if (comp is Container) {
+            comp.components.forEach { installDropHandler(it, handler) }
+        }
+    }
+
     private fun createTopBar(): JPanel {
         val undoBtn = JButton(Strings.get("edit.undo"))
         undoBtn.addActionListener { project.undo(); updateSelectInfo() }
@@ -208,7 +224,7 @@ class EditActivity : IEditorActivity {
             chooser.isMultiSelectionEnabled = true
             val result = chooser.showOpenDialog(null)
             if (result == JFileChooser.APPROVE_OPTION) {
-                chooser.selectedFiles.forEach { editorService.addImage(it) }
+                editorService.addImages(chooser.selectedFiles.toList())
             }
         }
 
