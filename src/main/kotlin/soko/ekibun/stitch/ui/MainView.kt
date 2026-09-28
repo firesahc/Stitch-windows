@@ -10,7 +10,6 @@ import java.awt.event.MouseEvent
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
 import java.io.File
-import javax.imageio.ImageIO
 import javax.swing.*
 import javax.swing.border.EmptyBorder
 
@@ -123,34 +122,31 @@ class MainView(private val appContext: AppContext) : JFrame() {
         fromGalleryBtn.alignmentX = Component.CENTER_ALIGNMENT
         fromGalleryBtn.maximumSize = Dimension(300, fromGalleryBtn.preferredSize.height)
         fromGalleryBtn.addActionListener {
-            val chooser = JFileChooser()
-            chooser.dialogTitle = Strings.get("dialog.selectImage")
-            chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter(Strings.get("dialog.imageFiles"), "png", "jpg", "jpeg", "bmp")
-            chooser.isMultiSelectionEnabled = true
-            val result = chooser.showOpenDialog(this)
-            if (result == JFileChooser.APPROVE_OPTION) {
-                val key = appContext.projectManager.newProject()
-                val project = appContext.projectManager.getProject(key)
-                // 单事务批量导入：一次 updateUndo，避免逐图产生 N 个撤销节点
-                project.updateUndo("import") {
-                    chooser.selectedFiles.forEach { file ->
-                        try {
-                            val img = ImageIO.read(file)
-                            if (img != null) {
-                                val imgKey = appContext.bitmapCache.saveBitmap(key, img)
-                                project.stitchInfo.add(
-                                    Stitch.StitchInfo(imgKey, img.width, img.height)
-                                )
-                                project.selected.add(imgKey)
-                            }
-                        } catch (ex: Exception) {
-                            JOptionPane.showMessageDialog(null, Strings.get("dialog.operationFailed", ex.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
-                        }
-                    }
-                }
-                EditActivity.open(appContext, this, key)
-                loadProjects()
+            val files = appContext.dialogs.pickOpenImages(this@MainView) ?: return@addActionListener
+            val result = ImageImport.decode(files)
+            if (result.decoded.isEmpty()) {
+                appContext.dialogs.warn(Strings.get("dialog.dropNoSupported"), Strings.get("common.warning"))
+                return@addActionListener
             }
+            val key = appContext.projectManager.newProject()
+            val project = appContext.projectManager.getProject(key)
+            // 单事务批量导入：一次 updateUndo，避免逐图产生 N 个撤销节点
+            project.updateUndo("import") {
+                result.decoded.forEach { d ->
+                    val imgKey = appContext.bitmapCache.saveBitmap(key, d.image)
+                    project.stitchInfo.add(
+                        Stitch.StitchInfo(imgKey, d.image.width, d.image.height)
+                    )
+                    project.selected.add(imgKey)
+                }
+            }
+            val skippedTotal = result.unsupportedNames.size + result.failedNames.size
+            if (skippedTotal > 0) {
+                val detail = (result.unsupportedNames + result.failedNames).take(5).joinToString(", ")
+                appContext.dialogs.warn(Strings.get("dialog.dropSkipped", result.decoded.size, skippedTotal, detail), Strings.get("common.warning"))
+            }
+            EditActivity.open(appContext, this, key)
+            loadProjects()
         }
 
         val openBtn = JButton(Strings.get("main.newProject"))

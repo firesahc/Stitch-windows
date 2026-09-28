@@ -4,7 +4,6 @@ import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.domain.StitchLabels
 import soko.ekibun.stitch.domain.StitchType
-import soko.ekibun.stitch.interfaces.Dialogs
 import soko.ekibun.stitch.interfaces.IEditorActivity
 import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.Strings
@@ -218,14 +217,8 @@ class EditActivity : IEditorActivity {
 
         val importBtn = JButton(Strings.get("edit.addImage"))
         importBtn.addActionListener {
-            val chooser = JFileChooser()
-            chooser.dialogTitle = Strings.get("dialog.selectImage")
-            chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter(Strings.get("dialog.imageFiles"), "png", "jpg", "jpeg", "bmp")
-            chooser.isMultiSelectionEnabled = true
-            val result = chooser.showOpenDialog(null)
-            if (result == JFileChooser.APPROVE_OPTION) {
-                editorService.addImages(chooser.selectedFiles.toList())
-            }
+            val files = appContext.dialogs.pickOpenImages(SwingUtilities.getWindowAncestor(importBtn)) ?: return@addActionListener
+            editorService.addImages(files)
         }
 
         return JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {

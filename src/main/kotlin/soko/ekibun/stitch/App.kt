@@ -1,12 +1,14 @@
 package soko.ekibun.stitch
 
 import kotlinx.coroutines.asCoroutineDispatcher
+import soko.ekibun.stitch.interfaces.Dialogs
 import soko.ekibun.stitch.interfaces.IBitmapCache
 import soko.ekibun.stitch.interfaces.IProjectManager
 import soko.ekibun.stitch.interfaces.IStitchNative
 import soko.ekibun.stitch.interfaces.IStitchService
 import soko.ekibun.stitch.service.StitchService
 import soko.ekibun.stitch.ui.MainView
+import soko.ekibun.stitch.ui.NativeFileDialogs
 import java.io.File
 import java.util.concurrent.Executors
 import javax.swing.SwingUtilities
@@ -18,6 +20,7 @@ class AppContext(
     val projectManager: IProjectManager,
     val stitchNative: IStitchNative,
     val stitchService: IStitchService,
+    val dialogs: Dialogs,
 ) {
     private val ioExecutor = Executors.newSingleThreadExecutor()
     val dispatcherIO = ioExecutor.asCoroutineDispatcher()
@@ -49,6 +52,7 @@ fun main() {
         projectManager = projectManager,
         stitchNative = stitchNative,
         stitchService = stitchService,
+        dialogs = NativeFileDialogs(),
     )
 
     SwingUtilities.invokeLater {

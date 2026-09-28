@@ -9,7 +9,6 @@ import soko.ekibun.stitch.domain.StitchType
 import soko.ekibun.stitch.interfaces.Dialogs
 import soko.ekibun.stitch.interfaces.IEditorActivity
 import java.io.File
-import javax.imageio.ImageIO
 import soko.ekibun.stitch.util.Strings
 import javax.swing.*
 
@@ -24,7 +23,7 @@ class EditorService(
     private val appContext: AppContext,
     private val projectKey: String,
     private val activity: IEditorActivity,
-    private val dialogs: Dialogs = SwingDialogs()
+    private val dialogs: Dialogs = appContext.dialogs
 ) {
     val project: Stitch.StitchProject
         get() = appContext.projectManager.getProject(projectKey)
@@ -148,31 +147,12 @@ class EditorService(
         }
     }
 
-    fun addImage(file: File): Boolean {
-        val before = project.stitchInfo.size
-        addImages(listOf(file))
-        return project.stitchInfo.size > before
-    }
-
     fun addImages(files: List<File>): Int {
         if (files.isEmpty()) return 0
-        val imageFiles = files.filter { it.isFile && SUPPORTED_EXTENSIONS.contains(it.extension.lowercase()) }
-        val skippedUnsupported = files.size - imageFiles.size
-        data class Decoded(val image: java.awt.image.BufferedImage, val source: File)
-        val decoded = mutableListOf<Decoded>()
-        val failed = mutableListOf<String>()
-        for (f in imageFiles) {
-            try {
-                val bufferedImage = ImageIO.read(f)
-                if (bufferedImage == null) failed.add(f.name)
-                else decoded.add(Decoded(bufferedImage, f))
-            } catch (e: Exception) {
-                failed.add(f.name)
-            }
-        }
-        if (decoded.isNotEmpty()) {
+        val result = ImageImport.decode(files)
+        if (result.decoded.isNotEmpty()) {
             project.updateUndo("dropImages") {
-                decoded.forEach { d ->
+                result.decoded.forEach { d ->
                     val key = appContext.bitmapCache.saveBitmap(projectKey, d.image)
                     val info = Stitch.StitchInfo(key, d.image.width, d.image.height)
                     project.stitchInfo.add(info)
@@ -181,15 +161,14 @@ class EditorService(
             }
             activity.updateSelectInfo()
         }
-        val skippedTotal = skippedUnsupported + failed.size
-        if (decoded.isEmpty()) {
+        val skippedTotal = result.unsupportedNames.size + result.failedNames.size
+        if (result.decoded.isEmpty()) {
             dialogs.warn(Strings.get("dialog.dropNoSupported"), Strings.get("common.warning"))
         } else if (skippedTotal > 0) {
-            val detail = (files.filter { !it.isFile || !SUPPORTED_EXTENSIONS.contains(it.extension.lowercase()) }.map { it.name } + failed)
-                .take(5).joinToString(", ")
-            dialogs.warn(Strings.get("dialog.dropSkipped", decoded.size, skippedTotal, detail), Strings.get("common.warning"))
+            val detail = (result.unsupportedNames + result.failedNames).take(5).joinToString(", ")
+            dialogs.warn(Strings.get("dialog.dropSkipped", result.decoded.size, skippedTotal, detail), Strings.get("common.warning"))
         }
-        return decoded.size
+        return result.decoded.size
     }
 
     companion object {
