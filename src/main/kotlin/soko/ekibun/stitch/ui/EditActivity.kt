@@ -2,6 +2,9 @@ package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.domain.StitchLabels
+import soko.ekibun.stitch.domain.StitchType
+import soko.ekibun.stitch.interfaces.Dialogs
 import soko.ekibun.stitch.interfaces.IEditorActivity
 import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.Strings
@@ -35,18 +38,24 @@ class EditActivity : IEditorActivity {
     override val progressRow: JPanel get() = modePanel.progressRow
     override val progressBar: JProgressBar get() = modePanel.progressBar
 
-    override var stitchType = IEditorActivity.StitchType.AUTO
+    override var stitchType = StitchType.AUTO
 
     val selectItems = mapOf(
-        IEditorActivity.labelDx to (0 to false),
-        IEditorActivity.labelDy to (0 to false),
-        IEditorActivity.labelTrim to (2 to true),
-        IEditorActivity.labelXrange to (0 to true),
-        IEditorActivity.labelYrange to (0 to true),
-        IEditorActivity.labelScale to (2 to false),
-        IEditorActivity.labelRotate to (0 to false)
+        StitchLabels.labelDx to (0 to false),
+        StitchLabels.labelDy to (0 to false),
+        StitchLabels.labelTrim to (2 to true),
+        StitchLabels.labelXrange to (0 to true),
+        StitchLabels.labelYrange to (0 to true),
+        StitchLabels.labelScale to (2 to false),
+        StitchLabels.labelRotate to (0 to false)
     )
-    override var selectIndex = IEditorActivity.labelDx
+    override var selectIndex = StitchLabels.labelDx
+
+    /** 唯一事务入口：所有参数变更经此做 updateUndo + 扇出，避免三入口各自拼装。 */
+    private fun commit(tag: Any?, block: () -> Unit) {
+        project.updateUndo(tag) { block() }
+        updateSelectInfo()
+    }
 
     constructor(appContext: AppContext, projectKey: String) {
         this.appContext = appContext
@@ -84,9 +93,16 @@ class EditActivity : IEditorActivity {
         modePanel = StitchModePanel(
             selectItems = selectItems,
             onStitch = { fullTransform, edgeEnhance -> editorService.stitch(fullTransform, edgeEnhance) },
-            onTabChanged = { type: IEditorActivity.StitchType -> stitchType = type; updateSelectInfo() },
+            onTabChanged = { type: StitchType -> stitchType = type; updateSelectInfo() },
             onSeekbarChange = { a, b ->
-                project.updateUndo(modePanel.seekbar) { editorService.setNumber(a, b, true) }
+                // TILE 显式传入 slider+方向；非 TILE 走 relative 路径，Service 不再直读 modePanel
+                if (stitchType == StitchType.TILE) {
+                    commit(modePanel.seekbar) {
+                        editorService.setNumber(a, b, true, tileSlider = a to b, horizontal = modePanel.switchHorizon.isSelected)
+                    }
+                } else {
+                    commit(modePanel.seekbar) { editorService.setNumber(a, b, true) }
+                }
                 updateNumber()
                 editView.update()
             },
@@ -101,7 +117,7 @@ class EditActivity : IEditorActivity {
             selectItems = { selectItems },
             switchHorizon = { modePanel.switchHorizon.isSelected },
             onNumberChanged = { a, b ->
-                project.updateUndo(numberEditPanel) { editorService.setNumber(a, b) }
+                commit(numberEditPanel) { editorService.setNumber(a, b) }
             },
             onSeekbarUpdate = {
                 modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
@@ -128,10 +144,11 @@ class EditActivity : IEditorActivity {
         "selectClear" to { selectPanel.selectClear() },
         "save" to { editorService.saveImage() },
         "stitch" to { editorService.stitch(modePanel.radioTransformFull.isSelected, modePanel.checkEdgeEnhance.isSelected) },
+        "delete" to { editorService.removeSelected() },
         "selHandleB" to {
             if (!modePanel.panelSeekbar.isVisible) return@to
-            val showB = stitchType != IEditorActivity.StitchType.AUTO && (
-                stitchType == IEditorActivity.StitchType.TILE || (selectItems[selectIndex]?.second == true))
+            val showB = stitchType != StitchType.AUTO && (
+                stitchType == StitchType.TILE || (selectItems[selectIndex]?.second == true))
             if (!showB) return@to
             numberEditPanel.selectedHandle = 1
             numberEditPanel.updateNumberView()
@@ -144,7 +161,7 @@ class EditActivity : IEditorActivity {
         "decValue" to {
             if (!modePanel.panelSeekbar.isVisible) return@to
             if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
-            val rounding = if (stitchType == IEditorActivity.StitchType.TILE) 2
+            val rounding = if (stitchType == StitchType.TILE) 2
                 else (selectItems[selectIndex]?.first ?: 0)
             val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
             if (numberEditPanel.selectedHandle == 0) {
@@ -162,7 +179,7 @@ class EditActivity : IEditorActivity {
         "incValue" to {
             if (!modePanel.panelSeekbar.isVisible) return@to
             if (KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner is JTextField) return@to
-            val rounding = if (stitchType == IEditorActivity.StitchType.TILE) 2
+            val rounding = if (stitchType == StitchType.TILE) 2
                 else (selectItems[selectIndex]?.first ?: 0)
             val step = Math.pow(10.0, -rounding.toDouble()).toFloat()
             if (numberEditPanel.selectedHandle == 0) {

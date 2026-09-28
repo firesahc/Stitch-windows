@@ -3,17 +3,28 @@ package soko.ekibun.stitch.ui
 import kotlinx.coroutines.*
 import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.domain.ParamMapper
+import soko.ekibun.stitch.domain.StitchLabels
+import soko.ekibun.stitch.domain.StitchType
+import soko.ekibun.stitch.interfaces.Dialogs
 import soko.ekibun.stitch.interfaces.IEditorActivity
-import soko.ekibun.stitch.interfaces.IEditorActivity.StitchType
 import java.io.File
 import javax.imageio.ImageIO
 import soko.ekibun.stitch.util.Strings
 import javax.swing.*
 
+/**
+ * 编辑器业务执行者。
+ *
+ * 边界：不再直持 Swing 具体对话框，不再直读 modePanel.seekbar/switch；
+ * 进度经 IEditorActivity（EditorProgress）回调，确认/文件选择经 Dialogs，
+ * 参数换算委托 ParamMapper。TILE 所需的 slider(a,b)+方向由调用方（EditActivity）传入。
+ */
 class EditorService(
     private val appContext: AppContext,
     private val projectKey: String,
     private val activity: IEditorActivity,
+    private val dialogs: Dialogs = SwingDialogs()
 ) {
     val project: Stitch.StitchProject
         get() = appContext.projectManager.getProject(projectKey)
@@ -22,7 +33,7 @@ class EditorService(
 
     fun stitch(fullTransform: Boolean, edgeEnhance: Boolean) {
         if (project.selected.isEmpty()) {
-            JOptionPane.showMessageDialog(null, Strings.get("dialog.noSelection"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
+            dialogs.warn(Strings.get("dialog.noSelection"), Strings.get("common.warning"))
             return
         }
         val total = project.selected.size
@@ -61,10 +72,10 @@ class EditorService(
                 activity.progressRow.isVisible = false
                 activity.updateSelectInfo()
                 if (failedIndices.isNotEmpty()) {
-                    val msg = "以下 ${failedIndices.size} 张图片拼接失败（编号从 0 开始）：\n" +
-                            failedIndices.joinToString(", ")
-                    JOptionPane.showMessageDialog(null, msg, "拼接失败",
-                        JOptionPane.WARNING_MESSAGE)
+                    dialogs.warn(
+                        Strings.get("editor.stitchFailed", failedIndices.size, failedIndices.joinToString(", ")),
+                        Strings.get("editor.stitchFailedTitle")
+                    )
                 }
             }
         }
@@ -76,7 +87,7 @@ class EditorService(
 
     fun swapSelected() {
         if (project.selected.size < 2) {
-            JOptionPane.showMessageDialog(null, Strings.get("dialog.selectTwoImages"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
+            dialogs.warn(Strings.get("dialog.selectTwoImages"), Strings.get("common.warning"))
             return
         }
         project.updateUndo {
@@ -100,13 +111,14 @@ class EditorService(
 
     fun removeSelected(): Boolean {
         if (project.selected.isEmpty()) {
-            JOptionPane.showMessageDialog(null, Strings.get("dialog.noSelection"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
+            dialogs.warn(Strings.get("dialog.noSelection"), Strings.get("common.warning"))
             return false
         }
-        val result = JOptionPane.showConfirmDialog(null,
+        val result = dialogs.confirm(
             Strings.get("dialog.confirmDelete", project.selected.size),
-            Strings.get("dialog.confirmTitle"), JOptionPane.OK_CANCEL_OPTION)
-        if (result == JOptionPane.OK_OPTION) {
+            Strings.get("dialog.confirmTitle")
+        )
+        if (result) {
             project.updateUndo {
                 project.stitchInfo.removeAll { project.isSelected(it.imageKey) }
                 project.selected.clear()
@@ -117,26 +129,21 @@ class EditorService(
         return false
     }
 
-    fun saveImage(): Boolean {
+    fun saveImage(bitmapProvider: (() -> java.awt.image.BufferedImage)? = null): Boolean {
         if (project.stitchInfo.isEmpty()) {
-            JOptionPane.showMessageDialog(null, Strings.get("dialog.noImages"), Strings.get("common.warning"), JOptionPane.WARNING_MESSAGE)
+            dialogs.warn(Strings.get("dialog.noImages"), Strings.get("common.warning"))
             return false
         }
-        val chooser = JFileChooser()
-        chooser.dialogTitle = Strings.get("dialog.saveImage")
-        chooser.fileFilter = javax.swing.filechooser.FileNameExtensionFilter(Strings.get("dialog.pngImage"), "png")
-        chooser.selectedFile = File("Stitch$projectKey.png")
-        val result = chooser.showSaveDialog(null)
-        if (result != JFileChooser.APPROVE_OPTION) return false
+        val file = dialogs.pickSaveFile("Stitch$projectKey.png") ?: return false
 
         try {
-            val file = chooser.selectedFile
-            val image = activity.editView.drawToBitmap()
-            ImageIO.write(image, "png", file)
-            JOptionPane.showMessageDialog(null, Strings.get("dialog.saved", file.absolutePath), Strings.get("common.success"), JOptionPane.INFORMATION_MESSAGE)
+            // 默认经 activity.editView 取图（过渡兼容）；新调用方可直接传入 bitmap 以彻底解耦 View。
+            val image = bitmapProvider?.invoke() ?: activity.editView.drawToBitmap()
+            appContext.bitmapCache.saveImageToPath(image, file)
+            dialogs.info(Strings.get("dialog.saved", file.absolutePath), Strings.get("common.success"))
             return true
         } catch (e: Exception) {
-            JOptionPane.showMessageDialog(null, Strings.get("dialog.saveFail", e.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
+            dialogs.error(Strings.get("dialog.saveFail", e.message), Strings.get("common.error"))
             return false
         }
     }
@@ -145,7 +152,7 @@ class EditorService(
         try {
             val bufferedImage = ImageIO.read(file)
             if (bufferedImage == null) {
-                JOptionPane.showMessageDialog(null, Strings.get("dialog.imageLoadFailed", file.name), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
+                dialogs.error(Strings.get("dialog.imageLoadFailed", file.name), Strings.get("common.error"))
                 return false
             }
             val key = appContext.bitmapCache.saveBitmap(projectKey, bufferedImage)
@@ -154,95 +161,100 @@ class EditorService(
             activity.updateSelectInfo()
             return true
         } catch (e: Exception) {
-            JOptionPane.showMessageDialog(null, Strings.get("dialog.imageLoadError", e.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
+            dialogs.error(Strings.get("dialog.imageLoadError", e.message), Strings.get("common.error"))
             return false
         }
     }
 
     companion object {
-    private val numberHandlers = mapOf(
-        IEditorActivity.labelDx to NumberLabelHandler.Dx,
-        IEditorActivity.labelDy to NumberLabelHandler.Dy,
-        IEditorActivity.labelTrim to NumberLabelHandler.Trim,
-        IEditorActivity.labelXrange to NumberLabelHandler.Xrange,
-        IEditorActivity.labelYrange to NumberLabelHandler.Yrange,
-        IEditorActivity.labelScale to NumberLabelHandler.Scale,
-        IEditorActivity.labelRotate to NumberLabelHandler.Rotate,
-    )
+        @Deprecated("已收敛至 domain.ParamMapper", ReplaceWith("ParamMapper", "soko.ekibun.stitch.domain.ParamMapper"))
+        sealed class NumberLabelHandler {
+            abstract fun apply(
+                info: Stitch.StitchInfo,
+                a: Float?,
+                b: Float?,
+                relative: Boolean,
+                width: Int,
+                height: Int
+            )
 
-    sealed class NumberLabelHandler {
-        abstract fun apply(
-            info: Stitch.StitchInfo,
-            a: Float?,
-            b: Float?,
-            relative: Boolean,
-            width: Int,
-            height: Int
-        )
-
-        object Dx : NumberLabelHandler() {
-            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                if (a != null) info.dx = if (relative) (a * 2 - 1) * width else a
+            object Dx : NumberLabelHandler() {
+                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                    ParamMapper.applyAbsolute(info, StitchLabels.labelDx, a, null)
+                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelDx, a, null)
+                }
             }
-        }
 
-        object Dy : NumberLabelHandler() {
-            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                if (a != null) info.dy = if (relative) (a * 2 - 1) * height else a
+            object Dy : NumberLabelHandler() {
+                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelDy, a, null)
+                    else ParamMapper.applyAbsolute(info, StitchLabels.labelDy, a, null)
+                }
             }
-        }
 
-        object Trim : NumberLabelHandler() {
-            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                if (a != null) info.a = a
-                if (b != null) info.b = b
+            object Trim : NumberLabelHandler() {
+                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelTrim, a, b)
+                    else ParamMapper.applyAbsolute(info, StitchLabels.labelTrim, a, b)
+                }
             }
-        }
 
-        object Xrange : NumberLabelHandler() {
-            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                if (a != null) info.xa = if (!relative && width > 0) a / width else a
-                if (b != null) info.xb = if (!relative && width > 0) b / width else b
+            object Xrange : NumberLabelHandler() {
+                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelXrange, a, b)
+                    else ParamMapper.applyAbsolute(info, StitchLabels.labelXrange, a, b)
+                }
             }
-        }
 
-        object Yrange : NumberLabelHandler() {
-            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                if (a != null) info.ya = if (!relative && height > 0) a / height else a
-                if (b != null) info.yb = if (!relative && height > 0) b / height else b
+            object Yrange : NumberLabelHandler() {
+                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelYrange, a, b)
+                    else ParamMapper.applyAbsolute(info, StitchLabels.labelYrange, a, b)
+                }
             }
-        }
 
-        object Scale : NumberLabelHandler() {
-            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                if (a != null) info.dscale = if (relative) (a * 2) else a
+            object Scale : NumberLabelHandler() {
+                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelScale, a, null)
+                    else ParamMapper.applyAbsolute(info, StitchLabels.labelScale, a, null)
+                }
             }
-        }
 
-        object Rotate : NumberLabelHandler() {
-            override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                if (a != null) info.drot = if (relative) (a * 2 - 1) * 180 else a
+            object Rotate : NumberLabelHandler() {
+                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
+                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelRotate, a, null)
+                    else ParamMapper.applyAbsolute(info, StitchLabels.labelRotate, a, null)
+                }
             }
         }
     }
-}
 
-    fun setNumber(a: Float? = null, b: Float? = null, relative: Boolean = false) {
+    /**
+     * 统一参数入口。
+     *
+     * @param tileSlider 当 stitchType==TILE 时由调用方传入当前 slider(a,b)；非 TILE 传 null。
+     * @param horizontal TILE 方向（switchHorizon），非 TILE 忽略。
+     */
+    fun setNumber(
+        a: Float? = null,
+        b: Float? = null,
+        relative: Boolean = false,
+        tileSlider: Pair<Float, Float>? = null,
+        horizontal: Boolean = false
+    ) {
         val selected = activity.selectPanel.selectedStitchInfo
-        if (selected.isNotEmpty()) selected.forEach {
-            if (activity.stitchType == StitchType.TILE) {
-                val aa = a ?: activity.modePanel.seekbar.a
-                val bb = b ?: activity.modePanel.seekbar.b
-                val rest = 1 - bb + aa
-                it.a = if (rest > 0) aa / rest else 0f
-                it.b = it.a
-                if (activity.modePanel.switchHorizon.isSelected) {
-                    it.dx = (bb - aa) * it.width; it.dy = 0f
-                } else {
-                    it.dy = (bb - aa) * it.height; it.dx = 0f
-                }
-            } else {
-                numberHandlers[activity.selectIndex]?.apply(it, a, b, relative, it.width, it.height)
+        if (selected.isEmpty()) return
+        val type = activity.stitchType
+        if (type == StitchType.TILE) {
+            // 兼容旧调用：未传 tileSlider 时回退读 modePanel（过渡期），新调用方应显式传入。
+            val (aa, bb) = tileSlider ?: (a?.let { it to (b ?: it) } ?: (activity.modePanel.seekbar.a to activity.modePanel.seekbar.b))
+            val h = if (tileSlider != null) horizontal else activity.modePanel.switchHorizon.isSelected
+            selected.forEach { ParamMapper.applyTile(it, aa, bb, h) }
+        } else {
+            val label = activity.selectIndex
+            selected.forEach {
+                if (relative) ParamMapper.applyRelative(it, label, a, b)
+                else ParamMapper.applyAbsolute(it, label, a, b)
             }
         }
     }

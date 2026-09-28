@@ -38,7 +38,9 @@ class BitmapCacheImpl(private val dataDirPath: String) : IBitmapCache {
     }
 
     override fun saveBitmap(project: String, image: BufferedImage, saveToMemory: Boolean): String {
-        val key = project + File.separator + UUID.randomUUID().toString()
+        // 统一使用 "/" 分隔，避免 File.separator 泄漏进 key 导致跨平台/清理困难。
+        // 读取侧 File(dataDirPath, key) 同时兼容新旧 key（Windows 下 "/" 与 "\" 均可解析）。
+        val key = "$project/${UUID.randomUUID()}"
 
         if (saveToMemory) addToMemoryCache(key, image)
 

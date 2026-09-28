@@ -4,6 +4,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import soko.ekibun.stitch.interfaces.IBitmapCache
 import soko.ekibun.stitch.interfaces.IProjectManager
 import soko.ekibun.stitch.interfaces.IStitchNative
+import soko.ekibun.stitch.interfaces.IStitchService
 import soko.ekibun.stitch.service.StitchService
 import soko.ekibun.stitch.ui.MainView
 import java.io.File
@@ -16,9 +17,14 @@ class AppContext(
     val bitmapCache: IBitmapCache,
     val projectManager: IProjectManager,
     val stitchNative: IStitchNative,
-    val stitchService: StitchService,
+    val stitchService: IStitchService,
 ) {
-    val dispatcherIO = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    private val ioExecutor = Executors.newSingleThreadExecutor()
+    val dispatcherIO = ioExecutor.asCoroutineDispatcher()
+
+    init {
+        Runtime.getRuntime().addShutdownHook(Thread { ioExecutor.shutdown() })
+    }
 }
 
 
@@ -32,17 +38,18 @@ fun main() {
 
     val dataDirPath = System.getProperty("user.dir") + File.separator + "data"
     val bitmapCache = BitmapCacheImpl(dataDirPath) as IBitmapCache
-    val projectManager = ProjectManagerImpl(dataDirPath) as IProjectManager
+    // provider 消除 ProjectManagerImpl.appContext 回填式双向依赖：manager 经 provider 懒取 AppContext
+    lateinit var appContext: AppContext
+    val projectManager = ProjectManagerImpl(dataDirPath) { appContext } as IProjectManager
     val stitchNative = StitchNativeImpl(bitmapCache) as IStitchNative
-    val stitchService = StitchService(stitchNative)
-    val appContext = AppContext(
+    val stitchService = StitchService(stitchNative) as IStitchService
+    appContext = AppContext(
         dataDirPath = dataDirPath,
         bitmapCache = bitmapCache,
         projectManager = projectManager,
         stitchNative = stitchNative,
         stitchService = stitchService,
     )
-    (projectManager as ProjectManagerImpl).appContext = appContext
 
     SwingUtilities.invokeLater {
         MainView(appContext).isVisible = true

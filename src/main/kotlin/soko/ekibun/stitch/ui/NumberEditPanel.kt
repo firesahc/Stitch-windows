@@ -1,8 +1,8 @@
 package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.Stitch
-import soko.ekibun.stitch.interfaces.IEditorActivity
-import soko.ekibun.stitch.interfaces.IEditorActivity.StitchType
+import soko.ekibun.stitch.domain.ParamMapper
+import soko.ekibun.stitch.domain.StitchType
 import soko.ekibun.stitch.util.PRIMARY_COLOR
 import java.awt.Color
 import java.awt.FlowLayout
@@ -113,44 +113,9 @@ class NumberEditPanel(
     fun updateNumber(selectedStitchInfo: List<Stitch.StitchInfo>) {
         if (selectedStitchInfo.isNotEmpty()) {
             numberView.isVisible = true
-            when {
-                stitchType() == StitchType.TILE -> {
-                    if (switchHorizon()) {
-                        updateNumberView(
-                            selectedStitchInfo.map { (1 - it.dx / it.width) * it.a }.average().toFloat(),
-                            selectedStitchInfo.map { it.a + (1 - it.a) * (it.dx / it.width) }.average().toFloat()
-                        )
-                    } else {
-                        updateNumberView(
-                            selectedStitchInfo.map { (1 - it.dy / it.height) * it.a }.average().toFloat(),
-                            selectedStitchInfo.map { it.a + (1 - it.a) * (it.dy / it.height) }.average().toFloat()
-                        )
-                    }
-                }
-                selectIndex() == IEditorActivity.labelDx ->
-                    updateNumberView(selectedStitchInfo.map { it.dx }.average().toFloat())
-                selectIndex() == IEditorActivity.labelDy ->
-                    updateNumberView(selectedStitchInfo.map { it.dy }.average().toFloat())
-                selectIndex() == IEditorActivity.labelTrim ->
-                    updateNumberView(
-                        selectedStitchInfo.map { it.a }.average().toFloat(),
-                        selectedStitchInfo.map { it.b }.average().toFloat()
-                    )
-                selectIndex() == IEditorActivity.labelXrange ->
-                    updateNumberView(
-                        selectedStitchInfo.map { it.xa * it.width }.average().toFloat(),
-                        selectedStitchInfo.map { it.xb * it.width }.average().toFloat()
-                    )
-                selectIndex() == IEditorActivity.labelYrange ->
-                    updateNumberView(
-                        selectedStitchInfo.map { it.ya * it.height }.average().toFloat(),
-                        selectedStitchInfo.map { it.yb * it.height }.average().toFloat()
-                    )
-                selectIndex() == IEditorActivity.labelScale ->
-                    updateNumberView(selectedStitchInfo.map { it.dscale }.average().toFloat())
-                selectIndex() == IEditorActivity.labelRotate ->
-                    updateNumberView(selectedStitchInfo.map { it.drot }.average().toFloat())
-            }
+            // 唯一映射源：ParamMapper.toNumber
+            val (a, b) = ParamMapper.toNumber(stitchType(), selectIndex(), selectedStitchInfo, switchHorizon())
+            updateNumberView(a, b)
         } else {
             numberView.isVisible = false
         }

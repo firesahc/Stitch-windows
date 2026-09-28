@@ -1,6 +1,7 @@
 package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.domain.ParamMapper
 import soko.ekibun.stitch.util.GraphicsHelper
 import soko.ekibun.stitch.util.Rect
 import java.awt.*
@@ -207,13 +208,10 @@ class EditorView(private val editActivity: EditActivity) : JPanel() {
             }
             if (dragging) {
                 project?.updateUndo(touching, immediateSave = false) {
-                    val ddx = x - touching.cx
-                    val ddy = y - touching.cy
-                    val cos = cos((touching.rot - touching.drot) * Math.PI / 180).toFloat()
-                    val sin = sin((touching.rot - touching.drot) * Math.PI / 180).toFloat()
-                    val s = if (touching.dscale == 0f) 0f else touching.scale / touching.dscale
-                    touching.dx += if (s == 0f) 0f else ((ddx * cos + ddy * sin) / s).toFloat()
-                    touching.dy += if (s == 0f) 0f else (((-ddx * sin + ddy * cos) / s)).toFloat()
+                    val ddx = (x - touching.cx).toFloat()
+                    val ddy = (y - touching.cy).toFloat()
+                    // 拖拽换算收敛至 ParamMapper（原内联 cos/sin/dscale 数学）
+                    ParamMapper.applyDrag(touching, ddx, ddy)
                 }
                 dragDirty = true
                 editActivity.updateSelectInfo()

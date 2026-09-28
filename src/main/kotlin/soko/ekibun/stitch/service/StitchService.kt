@@ -2,10 +2,11 @@ package soko.ekibun.stitch.service
 
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.interfaces.IStitchNative
+import soko.ekibun.stitch.interfaces.IStitchService
 import kotlin.math.abs
 
-class StitchService(private val stitchNative: IStitchNative) {
-    fun combine(
+class StitchService(private val stitchNative: IStitchNative) : IStitchService {
+    override fun combine(
         fullTransform: Boolean, edgeEnhance: Boolean,
         img0: Stitch.StitchInfo, img1: Stitch.StitchInfo
     ): Stitch.StitchInfo? {

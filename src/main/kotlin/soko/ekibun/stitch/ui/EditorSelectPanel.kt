@@ -1,8 +1,8 @@
 package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.Stitch
-import soko.ekibun.stitch.interfaces.IEditorActivity
-import soko.ekibun.stitch.interfaces.IEditorActivity.StitchType
+import soko.ekibun.stitch.domain.StitchLabels
+import soko.ekibun.stitch.domain.StitchType
 import soko.ekibun.stitch.util.Strings
 import java.awt.FlowLayout
 import javax.swing.JButton
@@ -21,7 +21,7 @@ class EditorSelectPanel(
 
     val selectedStitchInfo: List<Stitch.StitchInfo>
         get() = when {
-            stitchType() == StitchType.MAN && selectIndex() in listOf(IEditorActivity.labelDx, IEditorActivity.labelDy, IEditorActivity.labelTrim) ->
+            stitchType() == StitchType.MAN && selectIndex() in listOf(StitchLabels.labelDx, StitchLabels.labelDy, StitchLabels.labelTrim) ->
                 project.stitchInfo.filterIndexed { i, v ->
                     i > 0 && project.isSelected(v.imageKey)
                 }

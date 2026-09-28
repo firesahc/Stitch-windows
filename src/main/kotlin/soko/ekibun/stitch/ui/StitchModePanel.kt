@@ -1,8 +1,9 @@
 package soko.ekibun.stitch.ui
 
 import soko.ekibun.stitch.Stitch
-import soko.ekibun.stitch.interfaces.IEditorActivity
-import soko.ekibun.stitch.interfaces.IEditorActivity.StitchType
+import soko.ekibun.stitch.domain.ParamMapper
+import soko.ekibun.stitch.domain.StitchLabels
+import soko.ekibun.stitch.domain.StitchType
 import soko.ekibun.stitch.util.PRIMARY_COLOR
 import soko.ekibun.stitch.util.Strings
 import java.awt.*
@@ -32,7 +33,7 @@ class StitchModePanel(
     var stitchType: StitchType = StitchType.AUTO
 
     /** Current select index – updated externally by EditActivity */
-    var selectIndex: String = IEditorActivity.labelDx
+    var selectIndex: String = StitchLabels.labelDx
 
     // ---- Exposed components ----
 
@@ -79,7 +80,6 @@ class StitchModePanel(
     // ---- Auto panel ----
 
     private fun createAutoPanel() {
-        radioTransformTrans = JRadioButton(Strings.get("edit.transformTrans"))
         radioTransformTrans = JRadioButton(Strings.get("edit.transformTrans")).apply { isSelected = true }
         radioTransformFull = JRadioButton(Strings.get("edit.transformFull"))
         ButtonGroup().apply { add(radioTransformTrans); add(radioTransformFull) }
@@ -161,6 +161,7 @@ class StitchModePanel(
     // ---- Tab highlighting & panel visibility ----
 
     fun updateTab(stitchType: StitchType) {
+        this.stitchType = stitchType
         tabviews.forEach { label ->
             val idx = tabviews.indexOf(label)
             val type = StitchType.values()[idx]
@@ -182,31 +183,33 @@ class StitchModePanel(
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
+        this.stitchType = stitchType
+        this.selectIndex = selectIndex
         if (selectedStitchInfo.isNotEmpty()) {
             seekbar.isEnabled = true
             seekbar.constrainHandles = stitchType != StitchType.TILE
-            if (stitchType == StitchType.TILE) {
-                TileSeekbarHandler.updateSeekbar(seekbar, selectedStitchInfo, switchHorizonSelected)
-            } else {
-                seekbarHandlers[selectIndex]?.updateSeekbar(seekbar, selectedStitchInfo)
-            }
+            // 唯一映射源：ParamMapper.toSlider（原 7 个 SeekbarHandler 已收敛）
+            val (a, b, type) = ParamMapper.toSlider(stitchType, selectIndex, selectedStitchInfo, switchHorizonSelected)
+            seekbar.type = type
+            seekbar.a = a
+            seekbar.b = b
             seekbar.repaint()
         } else {
             seekbar.isEnabled = false
         }
     }
 
-    // ---- SeekbarHandler sealed hierarchy (replaces when-chain) ----
+    // ---- SeekbarHandler 保留为薄委托（过渡兼容），实际映射以 ParamMapper 为准 ----
 
     companion object {
         private val seekbarHandlers: Map<String, SeekbarHandler> = mapOf(
-            IEditorActivity.labelDx to DxSeekbarHandler,
-            IEditorActivity.labelDy to DySeekbarHandler,
-            IEditorActivity.labelTrim to TrimSeekbarHandler,
-            IEditorActivity.labelXrange to XrangeSeekbarHandler,
-            IEditorActivity.labelYrange to YrangeSeekbarHandler,
-            IEditorActivity.labelScale to ScaleSeekbarHandler,
-            IEditorActivity.labelRotate to RotateSeekbarHandler
+            StitchLabels.labelDx to DxSeekbarHandler,
+            StitchLabels.labelDy to DySeekbarHandler,
+            StitchLabels.labelTrim to TrimSeekbarHandler,
+            StitchLabels.labelXrange to XrangeSeekbarHandler,
+            StitchLabels.labelYrange to YrangeSeekbarHandler,
+            StitchLabels.labelScale to ScaleSeekbarHandler,
+            StitchLabels.labelRotate to RotateSeekbarHandler
         )
     }
 }
@@ -217,6 +220,13 @@ private sealed class SeekbarHandler {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean = false
     )
+
+    protected fun apply(seekbar: RangeSlider, type: StitchType, label: String, infos: List<Stitch.StitchInfo>, h: Boolean) {
+        val (a, b, t) = ParamMapper.toSlider(type, label, infos, h)
+        seekbar.type = t
+        seekbar.a = a
+        seekbar.b = b
+    }
 }
 
 private object TileSeekbarHandler : SeekbarHandler() {
@@ -225,14 +235,7 @@ private object TileSeekbarHandler : SeekbarHandler() {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
-        seekbar.type = RangeSlider.TYPE_RANGE
-        if (switchHorizonSelected) {
-            seekbar.a = selectedStitchInfo.map { (1 - it.dx / it.width) * it.a }.average().toFloat()
-            seekbar.b = selectedStitchInfo.map { it.a + (1 - it.a) * (it.dx / it.width) }.average().toFloat()
-        } else {
-            seekbar.a = selectedStitchInfo.map { (1 - it.dy / it.height) * it.a }.average().toFloat()
-            seekbar.b = selectedStitchInfo.map { it.a + (1 - it.a) * (it.dy / it.height) }.average().toFloat()
-        }
+        apply(seekbar, StitchType.TILE, "", selectedStitchInfo, switchHorizonSelected)
     }
 }
 
@@ -242,8 +245,7 @@ private object DxSeekbarHandler : SeekbarHandler() {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
-        seekbar.type = RangeSlider.TYPE_CENTER
-        seekbar.a = selectedStitchInfo.map { (it.dx / it.width + 1) / 2 }.average().toFloat()
+        apply(seekbar, StitchType.MAN, StitchLabels.labelDx, selectedStitchInfo, switchHorizonSelected)
     }
 }
 
@@ -253,8 +255,7 @@ private object DySeekbarHandler : SeekbarHandler() {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
-        seekbar.type = RangeSlider.TYPE_CENTER
-        seekbar.a = selectedStitchInfo.map { (it.dy / it.height + 1) / 2 }.average().toFloat()
+        apply(seekbar, StitchType.MAN, StitchLabels.labelDy, selectedStitchInfo, switchHorizonSelected)
     }
 }
 
@@ -264,9 +265,7 @@ private object TrimSeekbarHandler : SeekbarHandler() {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
-        seekbar.type = RangeSlider.TYPE_GRADIENT
-        seekbar.a = selectedStitchInfo.map { it.a }.average().toFloat()
-        seekbar.b = selectedStitchInfo.map { it.b }.average().toFloat()
+        apply(seekbar, StitchType.MAN, StitchLabels.labelTrim, selectedStitchInfo, switchHorizonSelected)
     }
 }
 
@@ -276,9 +275,7 @@ private object XrangeSeekbarHandler : SeekbarHandler() {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
-        seekbar.type = RangeSlider.TYPE_RANGE
-        seekbar.a = selectedStitchInfo.map { it.xa }.average().toFloat()
-        seekbar.b = selectedStitchInfo.map { it.xb }.average().toFloat()
+        apply(seekbar, StitchType.MAN, StitchLabels.labelXrange, selectedStitchInfo, switchHorizonSelected)
     }
 }
 
@@ -288,9 +285,7 @@ private object YrangeSeekbarHandler : SeekbarHandler() {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
-        seekbar.type = RangeSlider.TYPE_RANGE
-        seekbar.a = selectedStitchInfo.map { it.ya }.average().toFloat()
-        seekbar.b = selectedStitchInfo.map { it.yb }.average().toFloat()
+        apply(seekbar, StitchType.MAN, StitchLabels.labelYrange, selectedStitchInfo, switchHorizonSelected)
     }
 }
 
@@ -300,8 +295,7 @@ private object ScaleSeekbarHandler : SeekbarHandler() {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
-        seekbar.type = RangeSlider.TYPE_CENTER
-        seekbar.a = selectedStitchInfo.map { it.dscale / 2f }.average().toFloat()
+        apply(seekbar, StitchType.MAN, StitchLabels.labelScale, selectedStitchInfo, switchHorizonSelected)
     }
 }
 
@@ -311,7 +305,6 @@ private object RotateSeekbarHandler : SeekbarHandler() {
         selectedStitchInfo: List<Stitch.StitchInfo>,
         switchHorizonSelected: Boolean
     ) {
-        seekbar.type = RangeSlider.TYPE_CENTER
-        seekbar.a = selectedStitchInfo.map { (it.drot / 360) + 0.5f }.average().toFloat()
+        apply(seekbar, StitchType.MAN, StitchLabels.labelRotate, selectedStitchInfo, switchHorizonSelected)
     }
 }

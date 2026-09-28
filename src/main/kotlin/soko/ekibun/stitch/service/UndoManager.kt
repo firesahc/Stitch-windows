@@ -2,13 +2,20 @@ package soko.ekibun.stitch.service
 
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import soko.ekibun.stitch.Stitch.StitchInfo
 import java.io.File
 
-class UndoManager {
+/**
+ * 单步快照撤销（undo 即 swap，无 redo）。
+ * save 经注入的 scope 做防抖异步写，不再使用 GlobalScope。
+ */
+class UndoManager(
+    private val externalScope: CoroutineScope? = null
+) {
     private val stitchInfoBak = mutableListOf<StitchInfo>()
     private val selectedBak = mutableSetOf<String>()
     private var undoTag: Any? = null
@@ -53,7 +60,8 @@ class UndoManager {
     @Synchronized
     fun save(file: File, stitchInfo: List<StitchInfo>, gson: Gson, dispatcherIO: CoroutineDispatcher) {
         job?.cancel()
-        job = GlobalScope.launch(dispatcherIO) {
+        val scope = externalScope ?: CoroutineScope(SupervisorJob() + dispatcherIO)
+        job = scope.launch(dispatcherIO) {
             try {
                 val info = stitchInfo.toList()
                 if (!file.exists()) {

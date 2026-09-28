@@ -130,20 +130,22 @@ class MainView(private val appContext: AppContext) : JFrame() {
             val result = chooser.showOpenDialog(this)
             if (result == JFileChooser.APPROVE_OPTION) {
                 val key = appContext.projectManager.newProject()
-                chooser.selectedFiles.forEach { file ->
-                    try {
-                        val img = ImageIO.read(file)
-                        if (img != null) {
-                            val imgKey = appContext.bitmapCache.saveBitmap(key, img)
-                            val project = appContext.projectManager.getProject(key)
-                            project.updateUndo {
+                val project = appContext.projectManager.getProject(key)
+                // 单事务批量导入：一次 updateUndo，避免逐图产生 N 个撤销节点
+                project.updateUndo("import") {
+                    chooser.selectedFiles.forEach { file ->
+                        try {
+                            val img = ImageIO.read(file)
+                            if (img != null) {
+                                val imgKey = appContext.bitmapCache.saveBitmap(key, img)
                                 project.stitchInfo.add(
                                     Stitch.StitchInfo(imgKey, img.width, img.height)
                                 )
+                                project.selected.add(imgKey)
                             }
+                        } catch (ex: Exception) {
+                            JOptionPane.showMessageDialog(null, Strings.get("dialog.operationFailed", ex.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
                         }
-                    } catch (ex: Exception) {
-                        JOptionPane.showMessageDialog(null, Strings.get("dialog.operationFailed", ex.message), Strings.get("common.error"), JOptionPane.ERROR_MESSAGE)
                     }
                 }
                 EditActivity.open(appContext, this, key)
@@ -164,8 +166,16 @@ class MainView(private val appContext: AppContext) : JFrame() {
         clearBtn.alignmentX = Component.CENTER_ALIGNMENT
         clearBtn.maximumSize = Dimension(300, clearBtn.preferredSize.height)
         clearBtn.addActionListener {
-            appContext.projectManager.clearProjects()
-            loadProjects()
+            val result = JOptionPane.showConfirmDialog(
+                this,
+                Strings.get("main.deleteConfirm", ""),
+                Strings.get("dialog.confirmTitle"),
+                JOptionPane.OK_CANCEL_OPTION
+            )
+            if (result == JOptionPane.OK_OPTION) {
+                appContext.projectManager.clearProjects()
+                loadProjects()
+            }
         }
 
         panel.add(label)
@@ -186,10 +196,7 @@ class MainView(private val appContext: AppContext) : JFrame() {
     }
 
     private fun formatProjectName(file: File): String {
-        return file.name.toLongOrNull(16)?.let {
-            java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS",
-                java.util.Locale.getDefault()).format(java.util.Date(it))
-        } ?: file.name
+        return appContext.projectManager.formatProjectName(file)
     }
 
     private inner class ProjectListRenderer : DefaultListCellRenderer() {
