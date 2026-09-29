@@ -89,7 +89,10 @@ class MainView(private val appContext: AppContext) : JFrame() {
         val bottomBar = JPanel(FlowLayout(FlowLayout.RIGHT, 10, 10))
         val aboutBtn = JButton(Strings.get("main.about"))
         aboutBtn.addActionListener { AboutDialog.show(this) }
-        aboutBtn.border = EmptyBorder(5, 10, 5, 10)
+        aboutBtn.border = BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(Color(180, 180, 180)),
+            EmptyBorder(5, 10, 5, 10)
+        )
         bottomBar.add(aboutBtn)
         add(bottomBar, BorderLayout.SOUTH)
 
