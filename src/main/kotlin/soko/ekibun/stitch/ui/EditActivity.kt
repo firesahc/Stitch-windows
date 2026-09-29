@@ -32,6 +32,8 @@ class EditActivity : IEditorActivity {
     override lateinit var editView: EditorView
     override lateinit var modePanel: StitchModePanel
     lateinit var numberEditPanel: NumberEditPanel
+    private lateinit var undoBtn: JButton
+    private lateinit var redoBtn: JButton
 
     override val progressLabel: JLabel get() = modePanel.progressLabel
     override val progressRow: JPanel get() = modePanel.progressRow
@@ -144,6 +146,7 @@ class EditActivity : IEditorActivity {
 
     private fun createShortcutActions(): Map<String, () -> Unit> = mapOf(
         "undo" to { project.undo(); updateSelectInfo() },
+        "redo" to { project.redo(); updateSelectInfo() },
         "selectAll" to { selectPanel.selectAll() },
         "selectClear" to { selectPanel.selectClear() },
         "save" to { editorService.saveImage() },
@@ -212,8 +215,11 @@ class EditActivity : IEditorActivity {
     }
 
     private fun createTopBar(): JPanel {
-        val undoBtn = JButton(Strings.get("edit.undo"))
+        undoBtn = JButton(Strings.get("edit.undo"))
         undoBtn.addActionListener { project.undo(); updateSelectInfo() }
+
+        redoBtn = JButton(Strings.get("edit.redo"))
+        redoBtn.addActionListener { project.redo(); updateSelectInfo() }
 
         val importBtn = JButton(Strings.get("edit.addImage"))
         importBtn.addActionListener {
@@ -222,7 +228,7 @@ class EditActivity : IEditorActivity {
         }
 
         return JPanel(FlowLayout(FlowLayout.LEFT, 8, 5)).apply {
-            add(undoBtn); add(importBtn)
+            add(undoBtn); add(redoBtn); add(importBtn)
             background = Color(220, 220, 220)
         }
     }
@@ -250,6 +256,10 @@ class EditActivity : IEditorActivity {
         modePanel.updateTab(stitchType)
         modePanel.updateSeekbar(stitchType, selectIndex, selectPanel.selectedStitchInfo, modePanel.switchHorizon.isSelected)
         numberEditPanel.updateNumber(selectPanel.selectedStitchInfo)
+        if (::undoBtn.isInitialized) {
+            undoBtn.isEnabled = project.canUndo()
+            redoBtn.isEnabled = project.canRedo()
+        }
     }
 
     fun updateNumber() {

@@ -39,10 +39,21 @@ object Stitch {
         }
 
         @Synchronized
-        fun undo() {
-            undoManager.undo(stitchInfo, selected)
-            save()
+        fun undo(): Boolean {
+            val applied = undoManager.undo(stitchInfo, selected)
+            if (applied) save()
+            return applied
         }
+
+        @Synchronized
+        fun redo(): Boolean {
+            val applied = undoManager.redo(stitchInfo, selected)
+            if (applied) save()
+            return applied
+        }
+
+        fun canUndo(): Boolean = undoManager.canUndo()
+        fun canRedo(): Boolean = undoManager.canRedo()
 
         fun updateInfo(): Rect {
             // 薄委托：几何计算已抽至 domain.GeometryCalculator 纯函数

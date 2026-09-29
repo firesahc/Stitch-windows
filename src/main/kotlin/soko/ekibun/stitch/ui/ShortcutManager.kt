@@ -10,7 +10,7 @@ import javax.swing.*
  *
  * @param rootPane The [JRootPane] to bind shortcuts to.
  * @param actions A map of action names to callback lambdas.
- *   Keys: "undo", "selectAll", "selectClear", "save", "stitch", "delete",
+ *   Keys: "undo", "redo", "selectAll", "selectClear", "save", "stitch", "delete",
  *         "selHandleB", "selHandleA", "decValue", "incValue".
  */
 class ShortcutManager(rootPane: JRootPane, actions: Map<String, () -> Unit>) {
@@ -21,6 +21,11 @@ class ShortcutManager(rootPane: JRootPane, actions: Map<String, () -> Unit>) {
             rootPane,
             KeyStroke.getKeyStroke(KeyEvent.VK_Z, Toolkit.getDefaultToolkit().menuShortcutKeyMask),
             "undo", actions["undo"]
+        )
+        putBinding(
+            rootPane,
+            KeyStroke.getKeyStroke(KeyEvent.VK_Y, Toolkit.getDefaultToolkit().menuShortcutKeyMask),
+            "redo", actions["redo"]
         )
         putBinding(
             rootPane,
