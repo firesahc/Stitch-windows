@@ -1,5 +1,6 @@
 package soko.ekibun.stitch
 
+import soko.ekibun.stitch.domain.ProjectRepository
 import java.io.File
 
 class ProjectManagerImpl(
@@ -18,7 +19,8 @@ class ProjectManagerImpl(
     override fun getProjects(): Array<File> {
         val file = File(dataDirPath)
         if (!file.exists()) return emptyArray()
-        return file.listFiles { f -> f.isDirectory } ?: emptyArray()
+        val dirs = file.listFiles { f -> f.isDirectory } ?: emptyArray()
+        return dirs.sortedByDescending { it.lastModified() }.toTypedArray()
     }
 
     override fun getProjectFile(projectKey: String): File {
@@ -40,5 +42,19 @@ class ProjectManagerImpl(
         val file = File(dataDirPath, projectKey)
         projects.remove(projectKey)
         file.deleteRecursively()
+    }
+
+    override fun cleanupOrphanBitmaps(): Int {
+        var total = 0
+        val repository = ProjectRepository()
+        for (dir in getProjects()) {
+            try {
+                val keys = repository.load(getProjectFile(dir.name)).map { it.imageKey }.toSet()
+                total += appCtx.bitmapCache.gcProjectFiles(dir.name, keys)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        return total
     }
 }

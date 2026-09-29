@@ -1,6 +1,8 @@
 package soko.ekibun.stitch
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import soko.ekibun.stitch.interfaces.Dialogs
 import soko.ekibun.stitch.interfaces.IBitmapCache
 import soko.ekibun.stitch.interfaces.IProjectManager
@@ -54,6 +56,15 @@ fun main() {
         stitchService = stitchService,
         dialogs = NativeFileDialogs(),
     )
+
+    // 启动时静默回收孤儿图片（此时无存活 undo 状态，安全）；失败不阻塞 UI。
+    CoroutineScope(appContext.dispatcherIO).launch {
+        try {
+            appContext.projectManager.cleanupOrphanBitmaps()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     SwingUtilities.invokeLater {
         MainView(appContext).isVisible = true

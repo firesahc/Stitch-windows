@@ -60,4 +60,23 @@ class BitmapCacheImpl(private val dataDirPath: String) : IBitmapCache {
     override fun saveImageToPath(image: BufferedImage, file: File) {
         ImageIO.write(image, "png", file)
     }
+
+    override fun gcProjectFiles(projectKey: String, referencedKeys: Set<String>): Int {
+        val referencedNames = referencedKeys.map { it.substringAfterLast('/') }.toSet()
+        val dir = File(dataDirPath, projectKey)
+        val files = dir.listFiles() ?: return 0
+        var deleted = 0
+        for (f in files) {
+            if (!f.isFile || f.name == ".project" || f.name in referencedNames) continue
+            try {
+                if (f.delete()) deleted++
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        synchronized(memoryCache) {
+            memoryCache.keys.removeAll { it.startsWith("$projectKey/") && it.substringAfterLast('/') !in referencedNames }
+        }
+        return deleted
+    }
 }

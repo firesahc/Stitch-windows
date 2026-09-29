@@ -10,6 +10,8 @@ interface IProjectManager {
     fun newProject(): String
     fun clearProjects()
     fun deleteProject(projectKey: String)
+    /** 清理各项目下未被引用的图片文件（删除图片后 undo 语义只存于内存，跨启动 GC 安全），返回删除数。 */
+    fun cleanupOrphanBitmaps(): Int
     /** 项目目录名 -> 展示名。兼容三种 key：旧纯时间戳 hex、新时间戳-后缀、过渡期纯 UUID。 */
     fun formatProjectName(file: File): String {
         val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS",
