@@ -12,8 +12,6 @@ import javax.swing.JButton
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JTextField
-import javax.swing.event.DocumentEvent
-import javax.swing.event.DocumentListener
 
 /**
  * 数值编辑面板，包含 numberA / numberB 文本框、分隔符、加减按钮，
@@ -36,7 +34,6 @@ class NumberEditPanel(
     private val numberDiv: JLabel
     private val numberDec: JButton
     private val numberInc: JButton
-    private var suppressNumberListener = false
 
     val numberView: JPanel
 
@@ -49,33 +46,9 @@ class NumberEditPanel(
         numberDec = JButton("<")
         numberInc = JButton(">")
 
-        numberA.document.addDocumentListener(object : DocumentListener {
-            override fun insertUpdate(e: DocumentEvent) = onNumberAChanged()
-            override fun removeUpdate(e: DocumentEvent) = onNumberAChanged()
-            override fun changedUpdate(e: DocumentEvent) = onNumberAChanged()
-
-            private fun onNumberAChanged() {
-                if (suppressNumberListener) return
-                val num = numberA.text.toFloatOrNull() ?: return
-                onNumberChanged?.invoke(num, null)
-                onSeekbarUpdate?.invoke()
-                onEditViewUpdate?.invoke()
-            }
-        })
-
-        numberB.document.addDocumentListener(object : DocumentListener {
-            override fun insertUpdate(e: DocumentEvent) = onNumberBChanged()
-            override fun removeUpdate(e: DocumentEvent) = onNumberBChanged()
-            override fun changedUpdate(e: DocumentEvent) = onNumberBChanged()
-
-            private fun onNumberBChanged() {
-                if (suppressNumberListener) return
-                val num = numberB.text.toFloatOrNull() ?: return
-                onNumberChanged?.invoke(null, num)
-                onSeekbarUpdate?.invoke()
-                onEditViewUpdate?.invoke()
-            }
-        })
+        // 回车提交：输入过程中不进撤销栈，避免输 100 产生 1/10/100 三个节点
+        numberA.addActionListener { commitA() }
+        numberB.addActionListener { commitB() }
 
         numberDec.addActionListener {
             val step = Math.pow(
@@ -110,6 +83,20 @@ class NumberEditPanel(
         numberView.add(numRow)
     }
 
+    private fun commitA() {
+        val num = numberA.text.toFloatOrNull() ?: return
+        onNumberChanged?.invoke(num, null)
+        onSeekbarUpdate?.invoke()
+        onEditViewUpdate?.invoke()
+    }
+
+    private fun commitB() {
+        val num = numberB.text.toFloatOrNull() ?: return
+        onNumberChanged?.invoke(null, num)
+        onSeekbarUpdate?.invoke()
+        onEditViewUpdate?.invoke()
+    }
+
     fun updateNumber(selectedStitchInfo: List<Stitch.StitchInfo>) {
         if (selectedStitchInfo.isNotEmpty()) {
             numberView.isVisible = true
@@ -129,10 +116,8 @@ class NumberEditPanel(
         numberDiv.isVisible = showB
         numberDec.isVisible = !showB
         numberInc.isVisible = !showB
-        suppressNumberListener = true
         if (a != null) numberA.text = String.format("%.${roundOf}f", a)
         if (b != null) numberB.text = String.format("%.${roundOf}f", b)
-        suppressNumberListener = false
         // 高亮选中的文本框
         numberA.border = if (selectedHandle == 0) BorderFactory.createLineBorder(PRIMARY_COLOR, 2)
         else BorderFactory.createLineBorder(Color(180, 180, 180))

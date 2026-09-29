@@ -53,8 +53,8 @@ class EditActivity : IEditorActivity {
     override var selectIndex = StitchLabels.labelDx
 
     /** 唯一事务入口：所有参数变更经此做 updateUndo + 扇出，避免三入口各自拼装。 */
-    private fun commit(tag: Any?, block: () -> Unit) {
-        project.updateUndo(tag) { block() }
+    private fun commit(tag: Any?, save: Boolean = true, block: () -> Unit) {
+        project.updateUndo(tag, save) { block() }
         updateSelectInfo()
     }
 
@@ -97,18 +97,19 @@ class EditActivity : IEditorActivity {
             onTabChanged = { type: StitchType -> stitchType = type; updateSelectInfo() },
             onSeekbarChange = { a, b ->
                 // TILE 显式传入 slider+方向；非 TILE 走 relative 路径，Service 不再直读 modePanel
+                // 拖动中只改内存，松手再落盘，避免高频全量序列化
                 if (stitchType == StitchType.TILE) {
-                    commit(modePanel.seekbar) {
+                    commit(modePanel.seekbar, save = false) {
                         editorService.setNumber(a, b, true, tileSlider = a to b, horizontal = modePanel.switchHorizon.isSelected)
                     }
                 } else {
-                    commit(modePanel.seekbar) { editorService.setNumber(a, b, true) }
+                    commit(modePanel.seekbar, save = false) { editorService.setNumber(a, b, true) }
                 }
                 updateNumber()
                 editView.update()
             },
             onSave = { editorService.saveImage() },
-            onSeekbarTouchUp = { project.clearUndoTag() },
+            onSeekbarTouchUp = { project.clearUndoTag(); project.save() },
             onDropdownChanged = { newVal -> selectIndex = newVal; updateSelectInfo() }
         )
 
