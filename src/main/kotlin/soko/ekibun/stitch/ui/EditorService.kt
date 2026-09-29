@@ -4,7 +4,6 @@ import kotlinx.coroutines.*
 import soko.ekibun.stitch.AppContext
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.domain.ParamMapper
-import soko.ekibun.stitch.domain.StitchLabels
 import soko.ekibun.stitch.domain.StitchType
 import soko.ekibun.stitch.interfaces.Dialogs
 import soko.ekibun.stitch.interfaces.IEditorActivity
@@ -173,66 +172,6 @@ class EditorService(
 
     companion object {
         val SUPPORTED_EXTENSIONS = setOf("png", "jpg", "jpeg", "bmp")
-        @Deprecated("已收敛至 domain.ParamMapper", ReplaceWith("ParamMapper", "soko.ekibun.stitch.domain.ParamMapper"))
-        sealed class NumberLabelHandler {
-            abstract fun apply(
-                info: Stitch.StitchInfo,
-                a: Float?,
-                b: Float?,
-                relative: Boolean,
-                width: Int,
-                height: Int
-            )
-
-            object Dx : NumberLabelHandler() {
-                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                    ParamMapper.applyAbsolute(info, StitchLabels.labelDx, a, null)
-                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelDx, a, null)
-                }
-            }
-
-            object Dy : NumberLabelHandler() {
-                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelDy, a, null)
-                    else ParamMapper.applyAbsolute(info, StitchLabels.labelDy, a, null)
-                }
-            }
-
-            object Trim : NumberLabelHandler() {
-                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelTrim, a, b)
-                    else ParamMapper.applyAbsolute(info, StitchLabels.labelTrim, a, b)
-                }
-            }
-
-            object Xrange : NumberLabelHandler() {
-                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelXrange, a, b)
-                    else ParamMapper.applyAbsolute(info, StitchLabels.labelXrange, a, b)
-                }
-            }
-
-            object Yrange : NumberLabelHandler() {
-                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelYrange, a, b)
-                    else ParamMapper.applyAbsolute(info, StitchLabels.labelYrange, a, b)
-                }
-            }
-
-            object Scale : NumberLabelHandler() {
-                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelScale, a, null)
-                    else ParamMapper.applyAbsolute(info, StitchLabels.labelScale, a, null)
-                }
-            }
-
-            object Rotate : NumberLabelHandler() {
-                override fun apply(info: Stitch.StitchInfo, a: Float?, b: Float?, relative: Boolean, width: Int, height: Int) {
-                    if (relative) ParamMapper.applyRelative(info, StitchLabels.labelRotate, a, null)
-                    else ParamMapper.applyAbsolute(info, StitchLabels.labelRotate, a, null)
-                }
-            }
-        }
     }
 
     /**

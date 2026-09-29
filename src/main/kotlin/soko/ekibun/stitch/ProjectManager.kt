@@ -4,21 +4,10 @@ import java.io.File
 
 class ProjectManagerImpl(
     private val dataDirPath: String,
-    private val appContextProvider: (() -> AppContext)? = null
+    private val appContextProvider: () -> AppContext
 ) : soko.ekibun.stitch.interfaces.IProjectManager {
-    // 兼容旧构造：App.kt 完成 AppContext 组装前暂存，组装后经 provider 读取，避免双向 lateinit 回填。
-    // 新构造优先使用 appContextProvider；为空时回退到 legacyAppContext（过渡期）。
-    var legacyAppContext: AppContext? = null
-
-    @Deprecated("过渡兼容：新代码请使用构造注入的 appContextProvider", ReplaceWith("appContextProvider"))
-    var appContext: AppContext
-        get() = appContextProvider?.invoke() ?: legacyAppContext
-            ?: error("ProjectManagerImpl.appContext 未初始化")
-        set(value) { legacyAppContext = value }
-
     private val appCtx: AppContext
-        get() = appContextProvider?.invoke() ?: legacyAppContext
-            ?: error("ProjectManagerImpl.appContext 未初始化")
+        get() = appContextProvider()
 
     val projects = java.util.concurrent.ConcurrentHashMap<String, Stitch.StitchProject>()
 
