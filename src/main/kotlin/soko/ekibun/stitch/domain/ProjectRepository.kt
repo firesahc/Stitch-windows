@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.runBlocking
 import soko.ekibun.stitch.Stitch
+import soko.ekibun.stitch.util.Log
 import java.io.File
 
 /**
@@ -30,7 +31,7 @@ class ProjectRepository(
             }
             list.addAll(gson.fromJson<ArrayList<Stitch.StitchInfo>>(text, listType) ?: arrayListOf())
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("ProjectRepository", e)
         }
         return list
     }
@@ -45,7 +46,7 @@ class ProjectRepository(
             }
             file.writeText(json)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("ProjectRepository", e)
         }
     }
 

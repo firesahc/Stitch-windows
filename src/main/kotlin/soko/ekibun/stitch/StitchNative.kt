@@ -9,6 +9,7 @@ import java.awt.image.BufferedImage
 import java.util.concurrent.ConcurrentHashMap
 import soko.ekibun.stitch.interfaces.IBitmapCache
 import soko.ekibun.stitch.interfaces.IStitchNative
+import soko.ekibun.stitch.util.Log
 
 data class OffsetResult(val dx: Float, val dy: Float, val drot: Float, val dscale: Float)
 
@@ -24,8 +25,7 @@ class StitchNativeImpl(private val bitmapCache: IBitmapCache) : IStitchNative {
     }
 
     private fun logError(e: Exception) {
-        System.err.println("[StitchNative] ${e.message}")
-        e.printStackTrace()
+        Log.e("StitchNative", e)
     }
 
     override fun computeOffset(img0: Stitch.StitchInfo, img1: Stitch.StitchInfo,

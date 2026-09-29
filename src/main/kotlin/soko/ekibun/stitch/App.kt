@@ -11,6 +11,7 @@ import soko.ekibun.stitch.interfaces.IStitchService
 import soko.ekibun.stitch.service.StitchService
 import soko.ekibun.stitch.ui.MainView
 import soko.ekibun.stitch.ui.NativeFileDialogs
+import soko.ekibun.stitch.util.Log
 import java.io.File
 import java.util.concurrent.Executors
 import javax.swing.SwingUtilities
@@ -42,6 +43,7 @@ fun main() {
     javax.swing.UIManager.put("defaultFont", font)
 
     val dataDirPath = System.getProperty("user.dir") + File.separator + "data"
+    Log.init(File(dataDirPath))
     val bitmapCache = BitmapCacheImpl(dataDirPath) as IBitmapCache
     // provider 消除 ProjectManagerImpl.appContext 回填式双向依赖：manager 经 provider 懒取 AppContext
     lateinit var appContext: AppContext
@@ -62,7 +64,7 @@ fun main() {
         try {
             appContext.projectManager.cleanupOrphanBitmaps()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("App", e)
         }
     }
 

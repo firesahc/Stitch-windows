@@ -1,6 +1,7 @@
 package soko.ekibun.stitch
 
 import soko.ekibun.stitch.interfaces.IBitmapCache
+import soko.ekibun.stitch.util.Log
 import java.awt.image.BufferedImage
 import java.io.File
 import java.util.*
@@ -32,7 +33,7 @@ class BitmapCacheImpl(private val dataDirPath: String) : IBitmapCache {
             if (!file.exists()) return null
             return ImageIO.read(file)
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("BitmapCache", e)
         }
         return null
     }
@@ -52,7 +53,7 @@ class BitmapCacheImpl(private val dataDirPath: String) : IBitmapCache {
             }
             ImageIO.write(image, "png", file)
         } catch (e: Throwable) {
-            e.printStackTrace()
+            Log.e("BitmapCache", e)
         }
         return key
     }
@@ -71,7 +72,7 @@ class BitmapCacheImpl(private val dataDirPath: String) : IBitmapCache {
             try {
                 if (f.delete()) deleted++
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("BitmapCache", e)
             }
         }
         synchronized(memoryCache) {

@@ -3,6 +3,7 @@ package soko.ekibun.stitch.service
 import soko.ekibun.stitch.Stitch
 import soko.ekibun.stitch.interfaces.IStitchNative
 import soko.ekibun.stitch.interfaces.IStitchService
+import soko.ekibun.stitch.util.Log
 import kotlin.math.abs
 
 class StitchService(private val stitchNative: IStitchNative) : IStitchService {
@@ -24,7 +25,7 @@ class StitchService(private val stitchNative: IStitchNative) : IStitchService {
                 }
             } else null
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("StitchService", e)
             null
         }
     }

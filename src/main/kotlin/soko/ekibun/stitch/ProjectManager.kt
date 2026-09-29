@@ -1,6 +1,7 @@
 package soko.ekibun.stitch
 
 import soko.ekibun.stitch.domain.ProjectRepository
+import soko.ekibun.stitch.util.Log
 import java.io.File
 
 class ProjectManagerImpl(
@@ -52,7 +53,7 @@ class ProjectManagerImpl(
                 val keys = repository.load(getProjectFile(dir.name)).map { it.imageKey }.toSet()
                 total += appCtx.bitmapCache.gcProjectFiles(dir.name, keys)
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("ProjectManager", e)
             }
         }
         return total

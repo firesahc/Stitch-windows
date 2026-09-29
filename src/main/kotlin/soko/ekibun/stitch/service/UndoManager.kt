@@ -7,6 +7,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import soko.ekibun.stitch.Stitch.StitchInfo
+import soko.ekibun.stitch.util.Log
 import java.io.File
 
 /**
@@ -99,7 +100,7 @@ class UndoManager(
                 }
                 file.writeText(gson.toJson(info))
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e("UndoManager", e)
             }
         }
     }
