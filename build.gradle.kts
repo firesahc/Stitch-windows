@@ -65,8 +65,8 @@ tasks.named("installDist") {
 // ──────────────────────────────────────────────
 // jpackage 打包：便携版 ZIP / 单文件安装包（Windows）
 // 用法：
-//   .\gradlew packagePortable   # build/distributions/Stitch-1.0.0-portable.zip
-//   .\gradlew packageInstaller  # build/distributions/Stitch-1.0.0.exe（需 WiX 3.x）
+//   .\gradlew packagePortable   # build/distributions/Stitch-windows-1.0.0-portable.zip
+//   .\gradlew packageInstaller  # build/distributions/Stitch-windows-1.0.0.exe（需 WiX 3.x）
 //   .\gradlew packageAll        # 以上两者一次构建
 // jpackage 路径优先级：-PjpackageBin="..." > 环境变量 JPACKAGE_BIN > 当前 JVM 自带
 // ──────────────────────────────────────────────

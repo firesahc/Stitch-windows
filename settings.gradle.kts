@@ -1,1 +1,1 @@
-rootProject.name = "Stitch"
+rootProject.name = "Stitch-windows"

@@ -1,4 +1,4 @@
-# Stitch - 构建指南
+# Stitch-windows - 构建指南
 
 ## 环境要求
 
@@ -9,9 +9,9 @@
 
 | 产物 | 文件 | 说明 |
 |------|------|------|
-| **便携版 ZIP** | `build/distributions/Stitch-1.0.0-portable.zip` | 解压后双击 `Stitch.exe` 即可运行，自带 JRE |
-| **单文件安装包** | `build/distributions/Stitch-1.0.0.exe` | 双击安装（需 WiX 3.x 构建），自带 JRE |
-| **源码发行包** | `build/distributions/Stitch-1.0.0.zip` | Gradle application 插件标准包（`Stitch.bat` 启动） |
+| **便携版 ZIP** | `build/distributions/Stitch-windows-1.0.0-portable.zip` | 解压后双击 `Stitch-windows.exe` 即可运行，自带 JRE |
+| **单文件安装包** | `build/distributions/Stitch-windows-1.0.0.exe` | 双击安装（需 WiX 3.x 构建），自带 JRE |
+| **源码发行包** | `build/distributions/Stitch-windows-1.0.0.zip` | Gradle application 插件标准包（`Stitch-windows.bat` 启动） |
 
 ---
 
@@ -45,15 +45,15 @@ jpackage 路径优先级：`-PjpackageBin="..."` > 环境变量 `JPACKAGE_BIN` >
 # 创建 app image
 & "C:\Program Files\Java\jdk-17\bin\jpackage.exe" `
     --type app-image `
-    --name Stitch `
-    --input "build\install\Stitch\lib" `
-    --main-jar Stitch-1.0.0.jar `
+    --name Stitch-windows `
+    --input "build\install\Stitch-windows\lib" `
+    --main-jar Stitch-windows-1.0.0.jar `
     --main-class soko.ekibun.stitch.AppKt `
     --dest "build\jpackage"
 
 # 打包 ZIP
-Compress-Archive -Path "build\jpackage\Stitch\*" `
-    -DestinationPath "build\distributions\Stitch-1.0.0-portable.zip" `
+Compress-Archive -Path "build\jpackage\Stitch-windows\*" `
+    -DestinationPath "build\distributions\Stitch-windows-1.0.0-portable.zip" `
     -CompressionLevel Optimal -Force
 ```
 
@@ -64,28 +64,28 @@ Compress-Archive -Path "build\jpackage\Stitch\*" `
 
 & "C:\Program Files\Java\jdk-17\bin\jpackage.exe" `
     --type exe `
-    --name Stitch `
+    --name Stitch-windows `
     --app-version 1.0.0 `
-    --input "build\install\Stitch\lib" `
-    --main-jar Stitch-1.0.0.jar `
+    --input "build\install\Stitch-windows\lib" `
+    --main-jar Stitch-windows-1.0.0.jar `
     --main-class soko.ekibun.stitch.AppKt `
     --dest "build\distributions" `
     --win-dir-chooser --win-menu --win-shortcut
 ```
 
-产物：`build\distributions\Stitch-1.0.0.exe`。
+产物：`build\distributions\Stitch-windows-1.0.0.exe`。
 
 ---
 
 ## 产物使用说明
 
 ### 便携版 ZIP（推荐）
-1. 解压 `Stitch-1.0.0-portable.zip`
-2. 进入 `Stitch/` 目录
-3. 双击 `Stitch.exe` 运行（无需安装 JRE）
+1. 解压 `Stitch-windows-1.0.0-portable.zip`
+2. 进入 `Stitch-windows/` 目录
+3. 双击 `Stitch-windows.exe` 运行（无需安装 JRE）
 
 ### 单文件安装包
-1. 双击 `Stitch-1.0.0.exe` 按向导安装（可选安装目录）
+1. 双击 `Stitch-windows-1.0.0.exe` 按向导安装（可选安装目录）
 2. 从开始菜单/桌面快捷方式启动（无需安装 JRE）
 
 ---
